@@ -10,7 +10,7 @@ namespace Gamebanana.API;
 
 public static class Gamebanana
 {
-    public static readonly Uri BaseUri = new("https://gamebanana.com/apiv11");
+    public static readonly Uri BaseUri = new("https://gamebanana.com/apiv11/");
 
     public static class Games
     {

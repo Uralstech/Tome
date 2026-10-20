@@ -1,0 +1,1 @@
+Special thanks to <https://www.postman.com/s0nought/gb-api-v11/overview> for the Gamebanana API reference.
