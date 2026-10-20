@@ -9,7 +9,7 @@ internal partial class GameTopSubsJsonContext : JsonSerializerContext;
 public class TopSubmission
 {
     [JsonPropertyName("_idRow")]
-    public string Id { get; set; }
+    public int Id { get; set; }
 
     [JsonPropertyName("_sModelName")]
     public string Type { get; set; }

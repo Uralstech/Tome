@@ -18,7 +18,7 @@ public class SearchSubmissions
 public class SearchSubmission
 {
     [JsonPropertyName("_idRow")]
-    public string Id { get; set; }
+    public int Id { get; set; }
 
     [JsonPropertyName("_sModelName")]
     public string Type { get; set; }

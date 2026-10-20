@@ -1,8 +1,10 @@
 ﻿using Gamebanana.API.Data.Game.Featured;
 using Gamebanana.API.Data.Game.Search;
 using Gamebanana.API.Data.Game.TopSubs;
+using Gamebanana.API.Data.Submission;
 using System.Collections.Specialized;
 using System.Web;
+using static Gamebanana.API.Gamebanana;
 
 namespace Gamebanana.API;
 
@@ -12,7 +14,7 @@ public static class Gamebanana
 
     public static class Games
     {
-        public static class Submissions
+        public static class Search
         {
             public static async Task<List<TopSubmission>> TopSubmissionsAsync(int game, CancellationToken token = default)
             {
@@ -60,6 +62,15 @@ public static class Gamebanana
 
                 return await ApiClient.GetAsync(uriBuilder.Uri, GameSearchJsonContext.Default.SearchSubmissions, token);
             }
+        }
+    }
+
+    public static class Submission
+    {
+        public static async Task<SubmissionProfile> PropertiesAsync(int submission, string type, CancellationToken token = default)
+        {
+            Uri uri = new(BaseUri, $"{type}/{submission}?_csvProperties=@gbprofile");
+            return await ApiClient.GetAsync(uri, SubmissionJsonContext.Default.SubmissionProfile, token);
         }
     }
 }
