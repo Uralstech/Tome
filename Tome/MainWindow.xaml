@@ -5,9 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Tome"
         mc:Ignorable="d"
-        Title="Abrams' Tome" Height="450" Width="800" Background="Beige">
+        Title="Tome: Mod Manager for Deadlock" Height="480" Width="640" Background="Beige">
     <Grid Margin="5,5,5,5">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
@@ -21,10 +22,16 @@
 
             <TextBox TextWrapping="NoWrap" Text="Search for mods..." Grid.Column="0" Margin="0,0,1,0"/>
             <Button Content="Search" Grid.Column="1" Margin="0,0,1,0"/>
-            <Button Content="Modify" Grid.Column="2"/>
+            <Button Content="Apply" Grid.Column="2"/>
         </Grid>
+        
+        <UniformGrid Grid.Row="1" Rows="1" VerticalAlignment="Top" Margin="0,0,0,5" >
+            <ToggleButton Content="Installed" Checked="Category_Checked" Margin="0,0,1,0"/>
+            <ToggleButton Content="Featured" Checked="Category_Checked" Margin="0,0,1,0"/>
+            <ToggleButton Content="Top Submissions" Checked="Category_Checked" Margin="0,0,0,0"/>
+        </UniformGrid>
 
-        <DataGrid x:Name="ModsGrid" Grid.Row="1"
+        <DataGrid x:Name="ModsGrid" Grid.Row="2"
                   AutoGenerateColumns="False"
                   CanUserAddRows="False"
                   CanUserDeleteRows="False"
@@ -48,10 +55,11 @@
                     <Setter Property="Padding" Value="5,1,5,1"/>
                 </Style>
             </DataGrid.ColumnHeaderStyle>
-            
+
             <DataGrid.Columns>
+                <DataGridTextColumn Header="Likes" Binding="{Binding Likes}" Width="55" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Author" Binding="{Binding Likes}" Width="85" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Downloads" Binding="{Binding Downloads}" Width="70" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="55" IsReadOnly="True"/>
                 <DataGridCheckBoxColumn Header="Installed" Binding="{Binding Installed, UpdateSourceTrigger=PropertyChanged}" Width="55"/>
                 <DataGridTemplateColumn Header="Update" Width="55">
@@ -61,8 +69,14 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
+                <DataGridTemplateColumn Width="5">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="?" Click="InfoButton_Click" Tag="{Binding Id}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
-
     </Grid>
 </Window>

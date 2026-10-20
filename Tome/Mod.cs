@@ -5,8 +5,9 @@ namespace Tome;
 
 public class Mod : INotifyPropertyChanged
 {
+    public int Id { get; init; }
     public string Name { get; init; } = string.Empty;
-    public int Downloads { get; init; }
+    public int Likes { get; init; }
     public string Version { get; init; } = string.Empty;
 
     public bool Installed
