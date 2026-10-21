@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Gamebanana.API.Data;
+namespace GamebananaAPI.Data;
 
 internal class UnixDateTimeConverter : JsonConverter<DateTime>
 {

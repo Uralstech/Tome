@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Gamebanana.API.Data;
+namespace GamebananaAPI.Data;
 
 public class SubmissionAuthor
 {

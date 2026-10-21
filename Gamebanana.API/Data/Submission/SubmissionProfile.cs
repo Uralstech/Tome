@@ -1,9 +1,9 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Gamebanana.API.Data.Submission;
+namespace GamebananaAPI.Data.Submission;
 
 [JsonSerializable(typeof(SubmissionProfile))]
-[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization)]
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization | JsonSourceGenerationMode.Metadata)]
 internal partial class SubmissionJsonContext : JsonSerializerContext;
 
 public class SubmissionProfile

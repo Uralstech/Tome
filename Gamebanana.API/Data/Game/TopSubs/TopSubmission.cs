@@ -1,9 +1,9 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Gamebanana.API.Data.Game.TopSubs;
+namespace GamebananaAPI.Data.Game.TopSubs;
 
 [JsonSerializable(typeof(List<TopSubmission>))]
-[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization)]
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization | JsonSourceGenerationMode.Metadata)]
 internal partial class GameTopSubsJsonContext : JsonSerializerContext;
 
 public class TopSubmission
@@ -18,10 +18,10 @@ public class TopSubmission
     public string Name { get; set; }
 
     [JsonPropertyName("_sInitialVisibility")]
-    public string SafeForWork { get; set; }
+    public Visibility SafeForWork { get; set; }
 
     [JsonPropertyName("_sPeriod")]
-    public string Period { get; set; }
+    public TopSubmissionPeriod Period { get; set; }
 
     [JsonPropertyName("_aSubmitter")]
     public SubmissionAuthor Author { get; set; }
@@ -31,4 +31,29 @@ public class TopSubmission
 
     [JsonPropertyName("_nLikeCount")]
     public int Likes { get; set; }
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter<TopSubmissionPeriod>))]
+public enum TopSubmissionPeriod
+{
+    [JsonStringEnumMemberName("today")]
+    Today,
+
+    [JsonStringEnumMemberName("week")]
+    ThisWeek,
+
+    [JsonStringEnumMemberName("month")]
+    ThisMonth,
+
+    [JsonStringEnumMemberName("3month")]
+    ThreeMonths,
+
+    [JsonStringEnumMemberName("6month")]
+    SixMonths,
+
+    [JsonStringEnumMemberName("year")]
+    ThisYear,
+
+    [JsonStringEnumMemberName("alltime")]
+    AllTime,
 }

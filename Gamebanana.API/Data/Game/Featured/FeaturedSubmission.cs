@@ -1,9 +1,9 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Gamebanana.API.Data.Game.Featured;
+namespace GamebananaAPI.Data.Game.Featured;
 
 [JsonSerializable(typeof(FeaturedSubmissions))]
-[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization)]
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization | JsonSourceGenerationMode.Metadata)]
 internal partial class GameFeaturedJsonContext : JsonSerializerContext;
 
 public class FeaturedSubmissions
@@ -27,7 +27,7 @@ public class FeaturedSubmission
     public string Name { get; set; }
 
     [JsonPropertyName("_sInitialVisibility")]
-    public string SafeForWork { get; set; }
+    public Visibility SafeForWork { get; set; }
 
     [JsonPropertyName("_aSubmitter")]
     public SubmissionAuthor Author { get; set; }
@@ -45,14 +45,31 @@ public class FeaturedSubmission
     public bool IsObsolete { get; set; }
 
     [JsonPropertyName("_aFeaturings")]
-    public FeaturingInfo FeaturingInfo { get; set; }
+    public List<FeaturingInfo> Featurings { get; set; }
 }
 
 public class FeaturingInfo
 {
     [JsonPropertyName("_sFeatureGroup")]
-    public string Group { get; set; }
+    public FeaturingGroup Group { get; set; }
 
     [JsonPropertyName("_sTitle")]
     public string Title { get; set; }
+
+    [JsonPropertyName("_tsDate")]
+    [JsonConverter(typeof(UnixDateTimeConverter))]
+    public DateTime Date { get; set; }
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter<FeaturingGroup>))]
+public enum FeaturingGroup
+{
+    [JsonStringEnumMemberName("today")]
+    Today,
+
+    [JsonStringEnumMemberName("yesterday")]
+    Yesterday,
+
+    [JsonStringEnumMemberName("3day")]
+    ThreeDays
 }

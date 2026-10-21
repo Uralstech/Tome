@@ -6,6 +6,7 @@
         xmlns:local="clr-namespace:Tome"
         mc:Ignorable="d"
         WindowStyle="None"
+        Loaded="Window_Loaded"
         Title="Tome: Mod Manager for Deadlock" Height="480" Width="640" Background="Beige">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="25"
@@ -133,10 +134,9 @@
                 </DataGrid.ColumnHeaderStyle>
 
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Likes" Binding="{Binding Likes}" Width="55" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Author" Binding="{Binding Likes}" Width="85" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Likes" Binding="{Binding Likes}" Width="40" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Author" Binding="{Binding Author}" Width="85" IsReadOnly="True"/>
                     <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="55" IsReadOnly="True"/>
                     <DataGridCheckBoxColumn Header="Installed" Binding="{Binding Installed, UpdateSourceTrigger=PropertyChanged}" Width="55"/>
                     <DataGridTemplateColumn Header="Update" Width="55">
                         <DataGridTemplateColumn.CellTemplate>

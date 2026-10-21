@@ -1,12 +1,11 @@
-﻿using Gamebanana.API.Data.Game.Featured;
-using Gamebanana.API.Data.Game.Search;
-using Gamebanana.API.Data.Game.TopSubs;
-using Gamebanana.API.Data.Submission;
+﻿using GamebananaAPI.Data.Game.Featured;
+using GamebananaAPI.Data.Game.Search;
+using GamebananaAPI.Data.Game.TopSubs;
+using GamebananaAPI.Data.Submission;
 using System.Collections.Specialized;
 using System.Web;
-using static Gamebanana.API.Gamebanana;
 
-namespace Gamebanana.API;
+namespace GamebananaAPI;
 
 public static class Gamebanana
 {

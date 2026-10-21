@@ -1,9 +1,9 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Gamebanana.API.Data.Game.Search;
+namespace GamebananaAPI.Data.Game.Search;
 
 [JsonSerializable(typeof(SearchSubmissions))]
-[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization)]
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization | JsonSourceGenerationMode.Metadata)]
 internal partial class GameSearchJsonContext : JsonSerializerContext;
 
 public class SearchSubmissions
@@ -27,7 +27,7 @@ public class SearchSubmission
     public string Name { get; set; }
 
     [JsonPropertyName("_sInitialVisibility")]
-    public string SafeForWork { get; set; }
+    public Visibility SafeForWork { get; set; }
 
     [JsonPropertyName("_aSubmitter")]
     public SubmissionAuthor Author { get; set; }

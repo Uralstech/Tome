@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Gamebanana.API.Data.Game;
+namespace GamebananaAPI.Data.Game;
 
 public class SubmissionsMetadata
 {
@@ -12,4 +12,17 @@ public class SubmissionsMetadata
 
     [JsonPropertyName("_bIsComplete")]
     public bool IsComplete { get; set;}
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter<Visibility>))]
+public enum Visibility
+{
+    [JsonStringEnumMemberName("show")]
+    Show,
+
+    [JsonStringEnumMemberName("warn")]
+    Warn,
+
+    [JsonStringEnumMemberName("hide")]
+    Hide
 }

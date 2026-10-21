@@ -7,8 +7,8 @@ public class Mod : INotifyPropertyChanged
 {
     public int Id { get; init; }
     public string Name { get; init; } = string.Empty;
+    public string Author { get; init; } = string.Empty;
     public int Likes { get; init; }
-    public string Version { get; init; } = string.Empty;
 
     public bool Installed
     {

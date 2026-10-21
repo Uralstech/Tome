@@ -1,7 +1,7 @@
 ﻿using System.Net.Http.Json;
 using System.Text.Json.Serialization.Metadata;
 
-namespace Gamebanana.API;
+namespace GamebananaAPI;
 
 internal static class ApiClient
 {
@@ -16,7 +16,7 @@ internal static class ApiClient
             HttpCompletionOption.ResponseHeadersRead, token);
 
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<T>(json, token)
+        return await response.Content.ReadFromJsonAsync(json, token)
             ?? throw new InvalidOperationException("The API returned an empty response");
     }
 }
