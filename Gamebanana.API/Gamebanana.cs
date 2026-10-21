@@ -31,6 +31,8 @@ public static class Gamebanana
                 queryParams["_idGameRow"] = game.ToString();
                 queryParams["_nPage"] = page.ToString();
 
+                uriBuilder.Query = queryParams.ToString();
+
                 return await ApiClient.GetAsync(uriBuilder.Uri, GameFeaturedJsonContext.Default.FeaturedSubmissions, token);
             }
 
@@ -59,6 +61,8 @@ public static class Gamebanana
 
                 if (!string.IsNullOrEmpty(excludeTags))
                     queryParams["_csvTagExclusions"] = excludeTags;
+
+                uriBuilder.Query = queryParams.ToString();
 
                 return await ApiClient.GetAsync(uriBuilder.Uri, GameSearchJsonContext.Default.SearchSubmissions, token);
             }

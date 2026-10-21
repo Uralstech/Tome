@@ -5,33 +5,109 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Tome"
         mc:Ignorable="d"
+        WindowStyle="None"
         Title="Tome: Mod Manager for Deadlock" Height="480" Width="640" Background="Beige">
-    <Grid Margin="5,5,5,5">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="25"
+                      ResizeBorderThickness="4"
+                      GlassFrameThickness="0"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
 
-        <Grid Grid.Row="0" VerticalAlignment="Top" Margin="0,0,0,5">
+    <Window.Resources>
+        <Style x:Key="TitleBarButtonStyle"
+           TargetType="{x:Type Button}">
+            <Setter Property="Width" Value="35"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel LastChildFill="True">
+        <Grid DockPanel.Dock="Top" Height="30" Background="#FFFFFFF5">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="50"/>
-                <ColumnDefinition Width="50"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <TextBox TextWrapping="NoWrap" Text="Search for mods..." Grid.Column="0" Margin="0,0,1,0"/>
-            <Button Content="Search" Grid.Column="1" Margin="0,0,1,0"/>
-            <Button Content="Apply" Grid.Column="2"/>
-        </Grid>
-        
-        <UniformGrid Grid.Row="1" Rows="1" VerticalAlignment="Top" Margin="0,0,0,5" >
-            <ToggleButton Content="Installed" Checked="Category_Checked" Margin="0,0,1,0"/>
-            <ToggleButton Content="Featured" Checked="Category_Checked" Margin="0,0,1,0"/>
-            <ToggleButton Content="Top Submissions" Checked="Category_Checked" Margin="0,0,0,0"/>
-        </UniformGrid>
+            <TextBlock Grid.Column="0"
+                       Text="Tome: Mod Manager for Deadlock"
+                       FontSize="12"
+                       Margin="12,0,10,0"
+                       VerticalAlignment="Center"/>
 
-        <DataGrid x:Name="ModsGrid" Grid.Row="2"
+            <!-- Menus inside the title bar -->
+            <Menu Grid.Column="1"
+                  Background="Transparent"
+                  VerticalAlignment="Center"
+                  WindowChrome.IsHitTestVisibleInChrome="True">
+
+                <MenuItem Header="_File">
+                    <MenuItem Header="Game Path"/>
+                    <MenuItem Header="Default Filters"/>
+                </MenuItem>
+
+                <MenuItem Header="_Help">
+                    <MenuItem Header="_GitHub"/>
+                </MenuItem>
+            </Menu>
+
+            <Grid Grid.Column="2"/>
+
+            <!-- Native-style window buttons -->
+            <StackPanel Grid.Column="3"
+                        Orientation="Horizontal"
+                        WindowChrome.IsHitTestVisibleInChrome="True">
+
+                <Button Content="–"
+                        Style="{StaticResource TitleBarButtonStyle}"
+                        Padding="0,0,0,1.5"
+                        Click="Minimize_Click"/>
+
+                <Button Content="□"
+                        Style="{StaticResource TitleBarButtonStyle}"
+                        Padding="0,0,0,4"
+                        Click="Maximize_Click"/>
+
+                <Button Content="x"
+                        Style="{StaticResource TitleBarButtonStyle}"
+                        Padding="0,0,0,3"
+                        Click="Close_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <Grid Margin="5,5,5,5">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" VerticalAlignment="Top" Margin="0,0,0,5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="50"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBox TextWrapping="NoWrap" Text="Search for mods..." Grid.Column="0" Margin="0,0,1,0"/>
+                <Button Content="Search" Grid.Column="1" Margin="0,0,1,0"/>
+                <Button Content="Apply" Grid.Column="2"/>
+            </Grid>
+
+            <UniformGrid Grid.Row="1" Rows="1" VerticalAlignment="Top" Margin="0,0,0,5" >
+                <ToggleButton Content="Installed" Checked="Category_Checked" Margin="0,0,1,0"/>
+                <ToggleButton Content="Featured" Checked="Category_Checked" Margin="0,0,1,0"/>
+                <ToggleButton Content="Top Submissions" Checked="Category_Checked" Margin="0,0,0,0"/>
+            </UniformGrid>
+
+            <DataGrid x:Name="ModsGrid" Grid.Row="2"
                   AutoGenerateColumns="False"
                   CanUserAddRows="False"
                   CanUserDeleteRows="False"
@@ -44,39 +120,40 @@
                   RowBackground="Beige"
                   AlternatingRowBackground="LightYellow">
 
-            <DataGrid.ColumnHeaderStyle>
-                <Style TargetType="DataGridColumnHeader">
-                    <Setter Property="FontSize" Value="11"/>
-                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                    <Setter Property="VerticalContentAlignment" Value="Center"/>
-                    <Setter Property="Background" Value="LightYellow"/>
-                    <Setter Property="BorderBrush" Value="Gray"/>
-                    <Setter Property="BorderThickness" Value="0.6"/>
-                    <Setter Property="Padding" Value="5,1,5,1"/>
-                </Style>
-            </DataGrid.ColumnHeaderStyle>
+                <DataGrid.ColumnHeaderStyle>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="FontSize" Value="11"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                        <Setter Property="Background" Value="LightYellow"/>
+                        <Setter Property="BorderBrush" Value="Gray"/>
+                        <Setter Property="BorderThickness" Value="0.6"/>
+                        <Setter Property="Padding" Value="5,1,5,1"/>
+                    </Style>
+                </DataGrid.ColumnHeaderStyle>
 
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Likes" Binding="{Binding Likes}" Width="55" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Author" Binding="{Binding Likes}" Width="85" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="55" IsReadOnly="True"/>
-                <DataGridCheckBoxColumn Header="Installed" Binding="{Binding Installed, UpdateSourceTrigger=PropertyChanged}" Width="55"/>
-                <DataGridTemplateColumn Header="Update" Width="55">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <CheckBox IsChecked="{Binding Update, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanUpdate}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTemplateColumn Width="5">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <Button Content="?" Click="InfoButton_Click" Tag="{Binding Id}" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-            </DataGrid.Columns>
-        </DataGrid>
-    </Grid>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Likes" Binding="{Binding Likes}" Width="55" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Author" Binding="{Binding Likes}" Width="85" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="55" IsReadOnly="True"/>
+                    <DataGridCheckBoxColumn Header="Installed" Binding="{Binding Installed, UpdateSourceTrigger=PropertyChanged}" Width="55"/>
+                    <DataGridTemplateColumn Header="Update" Width="55">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding Update, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanUpdate}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Width="5">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Content="?" Click="InfoButton_Click" Tag="{Binding Id}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+    </DockPanel>
 </Window>
