@@ -1,9 +1,5 @@
 ﻿using GamebananaAPI;
-using GamebananaAPI.Data.Game.Featured;
-using GamebananaAPI.Data.Game.Search;
-using GamebananaAPI.Data.Game.TopSubs;
 using System.Collections.ObjectModel;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -12,7 +8,8 @@ namespace Tome;
 
 public partial class MainWindow : Window
 {
-    private const int DeadlockGameId = 20948;
+    private readonly GamebananaService _gamebanana = new();
+    private readonly SemaphoreSlim _getSemaphore = new(1, 1);
 
     public ObservableCollection<Mod> Mods { get; } = [];
 
@@ -23,6 +20,36 @@ public partial class MainWindow : Window
         ModsGrid.ItemsSource = Mods;
     }
 
+    protected override void OnClosed(EventArgs e)
+    {
+        _gamebanana.Dispose();
+        _getSemaphore.Dispose();
+
+        base.OnClosed(e);
+    }
+
+    private async void RunModsUpdateSafe(Func<Task<IReadOnlyList<Mod>>> func)
+    {
+        await _getSemaphore.WaitAsync();
+        try
+        {
+            Mods.Clear();
+            foreach (Mod mod in await func())
+                Mods.Add(mod);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this,
+                $"Operation failed: {ex.Message}",
+                "Please try again or report this issue on GitHub.",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _getSemaphore.Release();
+        }
+    }
+
     private void Window_Loaded(object sender, RoutedEventArgs e) =>
         FeaturedButton.IsChecked = true;
 
@@ -31,18 +58,18 @@ public partial class MainWindow : Window
         if (e.Key is System.Windows.Input.Key.Enter or System.Windows.Input.Key.Return)
         {
             e.Handled = true;
-            RunSearchAsync();
+            RunModsUpdateSafe(() => _gamebanana.SearchAsync(SearchBox.Text));
         }
     }
 
     private void Search_Click(object sender, RoutedEventArgs e) =>
-        RunSearchAsync();
+        RunModsUpdateSafe(() => _gamebanana.SearchAsync(SearchBox.Text));
 
     private void InfoButton_Click(object sender, RoutedEventArgs e)
     {
     }
 
-    private async void Category_Checked(object sender, RoutedEventArgs e)
+    private void Category_Checked(object sender, RoutedEventArgs e)
     {
         if (sender is not ToggleButton selectedButton
             || selectedButton.Parent is not Panel parent)
@@ -56,9 +83,9 @@ public partial class MainWindow : Window
         }
 
         if (ReferenceEquals(sender, FeaturedButton))
-            await GetFeaturedAsync();
+            RunModsUpdateSafe(() => _gamebanana.GetFeaturedAsync());
         else if (ReferenceEquals(sender, TopSubmissionsButton))
-            await GetTopSubmissionsAsync();
+            RunModsUpdateSafe(() => _gamebanana.GetTopSubmissionsAsync());
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e) =>
@@ -70,141 +97,4 @@ public partial class MainWindow : Window
 
     private void Close_Click(object sender, RoutedEventArgs e) =>
         Close();
-
-    private async void RunSearchAsync()
-    {
-        await SearchAsync(SearchBox.Text);
-    }
-
-    private async Task SearchAsync(string unformattedQuery)
-    {
-        string[] parts = unformattedQuery.Split(' ');
-        StringBuilder query = new();
-
-        string? sort = null;
-        string? includeTypes = null;
-        string? excludeTypes = null;
-        GamebananaAPI.Data.Game.Visibility showVisibility = GamebananaAPI.Data.Game.Visibility.Show;
-
-        foreach (string sub in parts)
-        {
-            int split = sub.IndexOf(':');
-            if (sub[0] != '$' || split != sub.LastIndexOf(':'))
-            {
-                query.Append(sub).Append(' ');
-                continue;
-            }
-
-            string param = sub[(split + 1)..];
-            switch (sub[..split])
-            {
-                case "$sort":
-                    sort = param; break;
-
-                case "$types":
-                    includeTypes = param; break;
-
-                case "$^types":
-                    excludeTypes = param; break;
-
-                case "$show":
-                    showVisibility = param switch
-                    {
-                        "all" => GamebananaAPI.Data.Game.Visibility.Hide,
-                        "warned" => GamebananaAPI.Data.Game.Visibility.Warn,
-                        "default" or _ => GamebananaAPI.Data.Game.Visibility.Show,
-                    }; break;
-            }
-        }
-
-        string queryText = query.ToString().Trim();
-        if (string.IsNullOrEmpty(queryText))
-            return;
-
-        SearchSubmissions submissions = await Gamebanana.Games.Search.SearchAsync(DeadlockGameId, queryText,
-            sort, includeTypes, excludeTypes);
-        Mods.Clear();
-
-        foreach (SearchSubmission submission in submissions.Submissions)
-        {
-            if ((int)submission.SafeForWork > (int)showVisibility)
-                continue;
-
-            Mods.Add(new Mod()
-            {
-                Id = submission.Id,
-                Name = submission.Name,
-                Likes = submission.Likes,
-                Author = submission.Author.Name
-            });
-        }
-    }
-
-    private async Task GetTopSubmissionsAsync()
-    {
-        static int GetPriority(TopSubmissionPeriod group) => group switch
-        {
-            TopSubmissionPeriod.Today => 0,
-            TopSubmissionPeriod.ThisWeek => 1,
-            TopSubmissionPeriod.ThisMonth => 2,
-            TopSubmissionPeriod.ThreeMonths => 3,
-            TopSubmissionPeriod.SixMonths => 4,
-            TopSubmissionPeriod.ThisYear => 5,
-            TopSubmissionPeriod.AllTime => 6,
-            _ => int.MaxValue
-        };
-
-        List<TopSubmission> top = await Gamebanana.Games.Search.TopSubmissionsAsync(DeadlockGameId);
-        Mods.Clear();
-
-        IOrderedEnumerable<TopSubmission> topOrdered = top.OrderBy(static sub => GetPriority(sub.Period));
-        foreach (TopSubmission submission in topOrdered)
-        {
-            if (submission.SafeForWork is not GamebananaAPI.Data.Game.Visibility.Show)
-                continue;
-
-            Mods.Add(new Mod()
-            {
-                Id = submission.Id,
-                Name = submission.Name,
-                Likes = submission.Likes,
-                Author = submission.Author.Name
-            });
-        }
-    }
-
-    private async Task GetFeaturedAsync()
-    {
-        static int GetPriority(FeaturingGroup group) => group switch
-        {
-            FeaturingGroup.Today => 0,
-            FeaturingGroup.Yesterday => 1,
-            FeaturingGroup.ThreeDays => 2,
-            _ => int.MaxValue
-        };
-
-        FeaturedSubmissions featured = await Gamebanana.Games.Search.FeaturedAsync(DeadlockGameId);
-        Mods.Clear();
-
-        IOrderedEnumerable<FeaturedSubmission> featuredOrdered = featured.Submissions
-            .OrderBy(static sub =>
-                sub.Featurings.OrderBy(static feat => GetPriority(feat.Group))
-                .ThenByDescending(static feat => feat.Date)
-                .Select(static feat => GetPriority(feat.Group))
-                .FirstOrDefault(int.MaxValue));
-
-        foreach (FeaturedSubmission submission in featuredOrdered)
-        {
-            if (submission.SafeForWork is not GamebananaAPI.Data.Game.Visibility.Show)
-                continue;
-
-            Mods.Add(new Mod()
-            {
-                Id = submission.Id,
-                Name = submission.Name,
-                Likes = submission.Likes,
-                Author = submission.Author.Name
-            });
-        }
-    }
 }
