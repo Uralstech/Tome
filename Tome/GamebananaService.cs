@@ -72,6 +72,9 @@ internal class GamebananaService : IDisposable
         if (string.IsNullOrEmpty(queryText))
             return [];
 
+        if (queryText.Length < 3)
+            throw new Exception("Search query needs to be at least 3 characters long.");
+
         string GetCacheKey() => $"search:{queryText}:{sort}:{includeTypes}:{excludeTypes}:{visibility}";
 
         if (_cache.TryGetValue(GetCacheKey(), out object? cachedVal)

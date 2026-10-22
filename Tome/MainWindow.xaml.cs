@@ -1,7 +1,5 @@
-﻿using GamebananaAPI;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 
 namespace Tome;
@@ -30,6 +28,21 @@ public partial class MainWindow : Window
         base.OnClosed(e);
     }
 
+    private void SetChecked(ToggleButton? newChecked)
+    {
+        if (ReferenceEquals(_currentChecked, newChecked))
+            return;
+
+        _currentChecked?.IsChecked = false;
+        _currentChecked = newChecked;
+    }
+
+    private void SearchSafe()
+    {
+        SetChecked(null);
+        RunModsUpdateSafe(() => _gamebanana.SearchAsync(SearchBox.Text));
+    }
+
     private async void RunModsUpdateSafe(Func<Task<IReadOnlyList<Mod>>> func)
     {
         await _getSemaphore.WaitAsync();
@@ -42,7 +55,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this,
-                ex.ToString(),
+                ex.Message,
                 "Operation failed",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
@@ -50,15 +63,6 @@ public partial class MainWindow : Window
         {
             _getSemaphore.Release();
         }
-    }
-
-    private void SetChecked(ToggleButton? newChecked)
-    {
-        if (ReferenceEquals(_currentChecked, newChecked))
-            return;
-
-        _currentChecked?.IsChecked = false;
-        _currentChecked = newChecked;
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -72,16 +76,11 @@ public partial class MainWindow : Window
         if (e.Key is System.Windows.Input.Key.Enter or System.Windows.Input.Key.Return)
         {
             e.Handled = true;
-            SetChecked(null);
-            RunModsUpdateSafe(() => _gamebanana.SearchAsync(SearchBox.Text));
+            SearchSafe();
         }
     }
 
-    private void Search_Click(object sender, RoutedEventArgs e)
-    {
-        SetChecked(null);
-        RunModsUpdateSafe(() => _gamebanana.SearchAsync(SearchBox.Text));
-    }
+    private void Search_Click(object sender, RoutedEventArgs e) => SearchSafe();
 
     private void InfoButton_Click(object sender, RoutedEventArgs e)
     {

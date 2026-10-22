@@ -15,7 +15,12 @@ internal static class ApiClient
         using HttpResponseMessage response = await s_client.GetAsync(path,
             HttpCompletionOption.ResponseHeadersRead, token);
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            string body = await response.Content.ReadAsStringAsync(token);
+            throw new HttpRequestException($"An HTTP error occurred (code {response.StatusCode}):\n{body}", null, response.StatusCode);
+        }
+
         return await response.Content.ReadFromJsonAsync(json, token)
             ?? throw new InvalidOperationException("The API returned an empty response");
     }
