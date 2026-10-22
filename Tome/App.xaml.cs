@@ -12,7 +12,6 @@ public partial class App : Application
         ServiceCollection services = new();
         services.AddSingleton<GamebananaService>();
         services.AddSingleton<MainWindow>();
-        services.AddTransient<ModInfo>();
 
         Services = services.BuildServiceProvider();
     }

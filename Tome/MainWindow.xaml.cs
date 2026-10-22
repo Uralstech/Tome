@@ -1,5 +1,7 @@
-﻿using System.Collections.ObjectModel;
+﻿using GamebananaAPI.Data.Submission;
+using System.Collections.ObjectModel;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 
 namespace Tome;
@@ -40,6 +42,28 @@ public partial class MainWindow : Window
     {
         SetChecked(null);
         RunModsUpdateSafe(() => _gamebanana.SearchAsync(SearchBox.Text));
+    }
+
+    private async void ShowModInfoSafeAsync(int id, string type)
+    {
+        await _getSemaphore.WaitAsync();
+        try
+        {
+            SubmissionProfile submission = await _gamebanana.GetSubmissionAsync(id, type);
+            ModInfo modInfoWindow = new(submission);
+            modInfoWindow.Show();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this,
+                ex.Message,
+                "Operation failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _getSemaphore.Release();
+        }
     }
 
     private async void RunModsUpdateSafe(Func<Task<IReadOnlyList<Mod>>> func)
@@ -83,6 +107,11 @@ public partial class MainWindow : Window
 
     private void InfoButton_Click(object sender, RoutedEventArgs e)
     {
+        if (sender is not Button button
+            || button.Tag is not Mod mod)
+            return;
+
+        ShowModInfoSafeAsync(mod.Id, mod.Type);
     }
 
     private void Category_Checked(object sender, RoutedEventArgs e)

@@ -5,10 +5,11 @@ namespace Tome;
 
 public class Mod : INotifyPropertyChanged
 {
-    public int Id { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public string Author { get; init; } = string.Empty;
-    public int Likes { get; init; }
+    public required int Id { get; init; }
+    public required string Type { get; init; } = string.Empty;
+    public required string Name { get; init; } = string.Empty;
+    public required string Author { get; init; } = string.Empty;
+    public required int Likes { get; init; }
 
     public bool Installed
     {

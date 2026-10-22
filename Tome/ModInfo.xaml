@@ -5,9 +5,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         xmlns:local="clr-namespace:Tome"
+        xmlns:converters="clr-namespace:Tome.Converters"
         mc:Ignorable="d"
         ResizeMode="NoResize"
         WindowStyle="None"
+        Loaded="Window_Loaded"
         Title="Tome: Mod Manager for Deadlock" Height="480" Width="640" Background="Beige">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="25"
@@ -15,12 +17,18 @@
                       GlassFrameThickness="0"
                       UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
+    
+    <Window.Resources>
+        <converters:SafetyLabelConverter x:Key="SafetyLabelConverter"/>
+        <converters:LicensePermissionsConverter x:Key="LicensePermissionsConverter"/>
+    </Window.Resources>
 
     <DockPanel LastChildFill="True">
         <local:TitleBar DockPanel.Dock="Top"/>
 
         <Grid Margin="5,5,5,5">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -31,24 +39,38 @@
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Column="0" Text="TEST TEST" Style="{StaticResource EllipsisTextBlockStyle}" FontSize="20" MaxWidth="350"/>
-                    <Grid Grid.Column="1" Margin="0,6,0,0">
+                    <TextBlock Grid.Column="0" Text="{Binding Name}" Style="{StaticResource EllipsisTextBlockStyle}" FontSize="20" MaxWidth="350"/>
+                    <Grid Grid.Column="1" Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{Binding Author.Name, StringFormat='by {0}'}" Style="{StaticResource EllipsisTextBlockStyle}" FontSize="11" VerticalAlignment="Center" Margin="4,0,2,0" MaxWidth="100"/>
+                        <Button Grid.Column="1" Content="🔗" FontSize="4" Width="10" Height="10" VerticalAlignment="Center" Click="AuthorLink_Click"/>
+                    </Grid>
+                    <Grid Grid.Column="2" Margin="0,8,0,0">
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Studio}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="by ABCD" Style="{StaticResource EllipsisTextBlockStyle}" FontSize="11" VerticalAlignment="Center" Margin="4,0,2,0" MaxWidth="100"/>
-                        <Button Grid.Column="1" Content="🔗" FontSize="4" Width="10" Height="10" VerticalAlignment="Center" Margin="0,1,0,0"/>
-                        <TextBlock Grid.Column="2" Text=", studio ABCD" Style="{StaticResource EllipsisTextBlockStyle}" FontSize="11" VerticalAlignment="Center" Margin="1,0,2,0" MaxWidth="125"/>
-                        <Button Grid.Column="3" Content="🔗" FontSize="4" Width="10" Height="10" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                        <TextBlock Grid.Column="0" Text="{Binding Studio.Name, StringFormat=', studio {0}'}" Style="{StaticResource EllipsisTextBlockStyle}" FontSize="11" VerticalAlignment="Center" Margin="1,0,2,0" MaxWidth="125"/>
+                        <Button Grid.Column="1" Content="🔗" FontSize="4" Width="10" Height="10" VerticalAlignment="Center" Click="StudioLink_Click"/>
                     </Grid>
-                    <Button Grid.Column="2" Content="🔗" FontSize="11" Width="20" Height="20"/>
+                    <Button Grid.Column="3" Content="🔗" FontSize="11" Width="20" Height="20" Click="ProfileLink_Click"/>
                 </Grid>
             </Border>
 
@@ -60,15 +82,15 @@
                 </Grid.ColumnDefinitions>
 
                 <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Margin="0,0,1,0" Background="LightYellow">
-                    <TextBlock Text="Added XX/XX/XXXX XX:XX:XX" FontSize="11" Padding="5,1,5,1"/>
+                    <TextBlock Text="{Binding Added, StringFormat={}Added {0:dd/MM/yyyy HH:mm}}" FontSize="11" Padding="5,1,5,1"/>
                 </Border>
 
                 <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Margin="0,0,1,0" Background="LightYellow">
-                    <TextBlock Text="Last Updated XX/XX/XXXX XX:XX:XX" FontSize="11" Padding="5,1,5,1"/>
+                    <TextBlock Text="{Binding Updated, TargetNullValue='Last Updated -', StringFormat={}Last Updated {0:dd/MM/yyyy HH:mm}}" FontSize="11" Padding="5,1,5,1"/>
                 </Border>
 
                 <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1" Background="LightYellow">
-                    <TextBlock Text="Last Modified XX/XX/XXXX XX:XX:XX" FontSize="11" Padding="5,1,5,1"/>
+                    <TextBlock Text="{Binding Modified, TargetNullValue='Last Modified -', StringFormat={}Last Modified {0:dd/MM/yyyy HH:mm}}" FontSize="11" Padding="5,1,5,1"/>
                 </Border>
             </Grid>
 
@@ -83,54 +105,70 @@
                 </Grid.ColumnDefinitions>
 
                 <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Margin="0,0,1,0" Background="LightYellow">
-                    <TextBlock Text="SFW" FontSize="11" Padding="5,1,5,1"/>
+                    <TextBlock Text="{Binding IsNotSafeForWork, Converter={StaticResource SafetyLabelConverter}}" FontSize="11" Padding="5,1,5,1"/>
                 </Border>
 
                 <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Margin="0,0,1,0" Background="LightYellow">
-                    <TextBlock Text="10 Subscribers" FontSize="11" Padding="5,1,5,1"/>
+                    <TextBlock Text="{Binding Subscribers, StringFormat={}{0:N0} Subscribers}" FontSize="11" Padding="5,1,5,1"/>
                 </Border>
 
                 <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1" Margin="0,0,1,0" Background="LightYellow">
-                    <TextBlock Text="10 Likes" FontSize="11" Padding="5,1,5,1"/>
+                    <TextBlock Text="{Binding Likes, StringFormat={}{0:N0} Likes}" FontSize="11" Padding="5,1,5,1"/>
                 </Border>
 
                 <Border Grid.Column="3" BorderBrush="Gray" BorderThickness="1" Margin="0,0,1,0" Background="LightYellow">
-                    <TextBlock Text="10 Thanks" FontSize="11" Padding="5,1,5,1"/>
+                    <TextBlock Text="{Binding Thanks, StringFormat={}{0:N0} Thanks}" FontSize="11" Padding="5,1,5,1"/>
                 </Border>
 
                 <Border Grid.Column="4" BorderBrush="Gray" BorderThickness="1" Margin="0,0,1,0" Background="LightYellow">
-                    <TextBlock Text="100 Views" FontSize="11" Padding="5,1,5,1"/>
+                    <TextBlock Text="{Binding Views, StringFormat={}{0:N0} Views}" FontSize="11" Padding="5,1,5,1"/>
                 </Border>
 
                 <Border Grid.Column="5" BorderBrush="Gray" BorderThickness="1" Background="LightYellow">
-                    <TextBlock Text="1000 Downloads" FontSize="11" Padding="5,1,5,1"/>
+                    <TextBlock Text="{Binding Downloads, StringFormat={}{0:N0} Downloads}" FontSize="11" Padding="5,1,5,1"/>
                 </Border>
             </Grid>
 
-            <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <Border Grid.Row="3" BorderBrush="Gray" BorderThickness="1" Background="LightYellow" Padding="5,2,5,5" Margin="0,0,0,1">
+                <StackPanel Orientation="Vertical">
+                    <Grid Margin="0,0,0,3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="License" FontSize="12" Margin="0,0,1,0"/>
+                        <Button Grid.Column="1" Content="&lt;-" FontSize="10" Width="20" Height="10" Padding="0,-3.8,0,0" Click="WebViewBack_Click" Margin="0,0,1,0"/>
+                        <Button Grid.Column="2" Content="-&gt;" FontSize="10" Width="20" Height="10" Padding="0,-3.8,0,0" Click="WebViewForward_Click"/>
+                    </Grid>
+                    
+                    <Border Height="85" BorderBrush="LightGray" BorderThickness="1">
+                        <wv2:WebView2 x:Name="LicenseWebView"/>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Orientation="Vertical">
                     <Border BorderBrush="Gray" BorderThickness="1" Background="LightYellow" Padding="5,2,5,5" Margin="0,0,0,1">
                         <StackPanel>
-                            <TextBlock Text="License" FontSize="12" Margin="0,0,0,3"/>
-                            <wv2:WebView2 Height="120"/>
-                        </StackPanel>
-                    </Border>
-                    <Border BorderBrush="Gray" BorderThickness="1" Background="LightYellow" Padding="5,2,5,5" Margin="0,0,0,1">
-                        <StackPanel>
                             <TextBlock Text="License Permissions" FontSize="12" Margin="0,0,0,3"/>
-                            <TextBox IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Disabled"/>
+                            <TextBox Text="{Binding LicenseChecklist, Converter={StaticResource LicensePermissionsConverter}}" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Disabled"/>
                         </StackPanel>
                     </Border>
-                    <DataGrid Style="{StaticResource DataGridStyle}"
-                              ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}">
+                    <DataGrid ItemsSource="{Binding Files}"
+                              Style="{StaticResource DataGridStyle}"
+                              ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}"
+                              IsReadOnly="True">
 
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="File" Width="100" IsReadOnly="True" ElementStyle="{StaticResource EllipsisTextBlockStyle}"/>
-                            <DataGridTextColumn Header="Description" Width="*" IsReadOnly="True" ElementStyle="{StaticResource EllipsisTextBlockStyle}"/>
-                            <DataGridTextColumn Header="Version" Width="65" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="Size" Width="65" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="Downloads" Width="65" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="Added" Width="65" IsReadOnly="True"/>
+                            <DataGridTextColumn Binding="{Binding Name}" Header="File" Width="100" IsReadOnly="True" ElementStyle="{StaticResource EllipsisTextBlockStyle}"/>
+                            <DataGridTextColumn Binding="{Binding Description}" Header="Description" Width="*" IsReadOnly="True" ElementStyle="{StaticResource EllipsisTextBlockStyle}"/>
+                            <DataGridTextColumn Binding="{Binding Size, StringFormat={}{0:N0} B}" Header="Size" Width="80" IsReadOnly="True"/>
+                            <DataGridTextColumn Binding="{Binding Downloads}" Header="Downloads" Width="70" IsReadOnly="True"/>
+                            <DataGridTextColumn Binding="{Binding Version}" Header="Version" Width="50" IsReadOnly="True"/>
+                            <DataGridTextColumn Binding="{Binding Added, StringFormat={}{0:dd/MM/yyyy}}" Header="Added" Width="70" IsReadOnly="True"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </StackPanel>

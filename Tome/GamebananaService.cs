@@ -3,6 +3,7 @@ using GamebananaAPI.Data.Game;
 using GamebananaAPI.Data.Game.Featured;
 using GamebananaAPI.Data.Game.Search;
 using GamebananaAPI.Data.Game.TopSubs;
+using GamebananaAPI.Data.Submission;
 using Microsoft.Extensions.Caching.Memory;
 using System.Text;
 
@@ -12,11 +13,25 @@ public class GamebananaService : IDisposable
 {
     private const int DeadlockGameId = 20948;
 
+    private static readonly TimeSpan s_submissionCacheTime = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan s_featuredCacheTime = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan s_topSubmissionsCacheTime = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan s_searchCacheTime = TimeSpan.FromSeconds(30);
 
     private readonly MemoryCache _cache = new(new MemoryCacheOptions());
+
+    public async Task<SubmissionProfile> GetSubmissionAsync(int id, string type)
+    {
+        string GetCacheKey() => $"submissionProfile:{id}";
+
+        if (_cache.TryGetValue(GetCacheKey(), out object? cachedVal)
+            && cachedVal is SubmissionProfile cachedProfile)
+            return cachedProfile;
+
+        SubmissionProfile profile = await Gamebanana.Submission.PropertiesAsync(id, type);
+        _cache.Set(GetCacheKey(), profile, s_submissionCacheTime);
+        return profile;
+    }
 
     public async Task<IReadOnlyList<Mod>> SearchAsync(string unformattedQuery, Visibility defaultVisibility = Visibility.Show)
     {
@@ -89,6 +104,7 @@ public class GamebananaService : IDisposable
             .Select(static sub => new Mod()
             {
                 Id = sub.Id,
+                Type = sub.Type,
                 Name = sub.Name,
                 Likes = sub.Likes,
                 Author = sub.Author.Name
@@ -125,6 +141,7 @@ public class GamebananaService : IDisposable
             .Select(static sub => new Mod()
             {
                 Id = sub.Id,
+                Type = sub.Type,
                 Name = sub.Name,
                 Likes = sub.Likes,
                 Author = sub.Author.Name
@@ -161,6 +178,7 @@ public class GamebananaService : IDisposable
             .Select(static sub => new Mod()
             {
                 Id = sub.Id,
+                Type = sub.Type,
                 Name = sub.Name,
                 Likes = sub.Likes,
                 Author = sub.Author.Name

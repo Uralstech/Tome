@@ -66,13 +66,13 @@ public class SubmissionProfile
 public class SubmissionLicenseChecklist
 {
     [JsonPropertyName("yes")]
-    public string[]? Allowed;
+    public string[]? Yes { get; set; }
 
     [JsonPropertyName("ask")]
-    public string[]? Ask;
+    public string[]? Ask { get; set; }
 
     [JsonPropertyName("no")]
-    public string[]? Disallowed;
+    public string[]? No { get; set; }
 }
 
 public class SubmissionFile
