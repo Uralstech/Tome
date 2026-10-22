@@ -97,14 +97,4 @@ public partial class MainWindow : Window
         else if (ReferenceEquals(sender, TopSubmissionsButton))
             RunModsUpdateSafe(() => _gamebanana.GetTopSubmissionsAsync());
     }
-
-    private void Minimize_Click(object sender, RoutedEventArgs e) =>
-        WindowState = WindowState.Minimized;
-
-    private void Maximize_Click(object sender, RoutedEventArgs e) =>
-        WindowState = WindowState == WindowState.Maximized
-            ? WindowState.Normal : WindowState.Maximized;
-
-    private void Close_Click(object sender, RoutedEventArgs e) =>
-        Close();
 }
