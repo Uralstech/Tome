@@ -104,9 +104,9 @@
             </Grid>
 
             <UniformGrid Grid.Row="1" Rows="1" VerticalAlignment="Top" Margin="0,0,0,5" >
-                <ToggleButton Content="Installed" Checked="Category_Checked" Margin="0,0,1,0"/>
-                <ToggleButton Content="Featured" Checked="Category_Checked" Margin="0,0,1,0"/>
-                <ToggleButton Content="Top Submissions" Checked="Category_Checked" Margin="0,0,0,0"/>
+                <ToggleButton Content="Installed" x:Name="InstalledButton" Checked="Category_Checked" Margin="0,0,1,0"/>
+                <ToggleButton Content="Featured" x:Name="FeaturedButton" Checked="Category_Checked" Margin="0,0,1,0"/>
+                <ToggleButton Content="Top Submissions" x:Name="TopSubmissionsButton" Checked="Category_Checked" Margin="0,0,0,0"/>
             </UniformGrid>
 
             <DataGrid x:Name="ModsGrid" Grid.Row="2"

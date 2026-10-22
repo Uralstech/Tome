@@ -23,10 +23,8 @@ public partial class MainWindow : Window
         ModsGrid.ItemsSource = Mods;
     }
 
-    private async void Window_Loaded(object sender, RoutedEventArgs e)
-    {
-        await GetFeatured();
-    }
+    private void Window_Loaded(object sender, RoutedEventArgs e) =>
+        FeaturedButton.IsChecked = true;
 
     private void Search_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
@@ -39,6 +37,39 @@ public partial class MainWindow : Window
 
     private void Search_Click(object sender, RoutedEventArgs e) =>
         RunSearchAsync();
+
+    private void InfoButton_Click(object sender, RoutedEventArgs e)
+    {
+    }
+
+    private async void Category_Checked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleButton selectedButton
+            || selectedButton.Parent is not Panel parent)
+            return;
+
+        foreach (object? child in parent.Children)
+        {
+            if (child is ToggleButton button
+                && button != selectedButton)
+                button.IsChecked = false;
+        }
+
+        if (ReferenceEquals(sender, FeaturedButton))
+            await GetFeaturedAsync();
+        else if (ReferenceEquals(sender, TopSubmissionsButton))
+            await GetTopSubmissionsAsync();
+    }
+
+    private void Minimize_Click(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState.Minimized;
+
+    private void Maximize_Click(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState == WindowState.Maximized
+            ? WindowState.Normal : WindowState.Maximized;
+
+    private void Close_Click(object sender, RoutedEventArgs e) =>
+        Close();
 
     private async void RunSearchAsync()
     {
@@ -109,7 +140,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task GetTopSubmissions()
+    private async Task GetTopSubmissionsAsync()
     {
         static int GetPriority(TopSubmissionPeriod group) => group switch
         {
@@ -142,7 +173,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task GetFeatured()
+    private async Task GetFeaturedAsync()
     {
         static int GetPriority(FeaturingGroup group) => group switch
         {
@@ -176,32 +207,4 @@ public partial class MainWindow : Window
             });
         }
     }
-
-    private void InfoButton_Click(object sender, RoutedEventArgs e)
-    {
-    }
-
-    private void Category_Checked(object sender, RoutedEventArgs e)
-    {
-        if (sender is not ToggleButton selectedButton
-            || selectedButton.Parent is not Panel parent)
-            return;
-
-        foreach (object? child in parent.Children)
-        {
-            if (child is ToggleButton button
-                && button != selectedButton)
-                button.IsChecked = false;
-        }
-    }
-
-    private void Minimize_Click(object sender, RoutedEventArgs e) =>
-        WindowState = WindowState.Minimized;
-
-    private void Maximize_Click(object sender, RoutedEventArgs e) =>
-        WindowState = WindowState == WindowState.Maximized
-            ? WindowState.Normal : WindowState.Maximized;
-
-    private void Close_Click(object sender, RoutedEventArgs e) =>
-        Close();
 }
