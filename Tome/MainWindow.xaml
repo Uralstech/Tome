@@ -97,8 +97,9 @@
                     <ColumnDefinition Width="50"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBox TextWrapping="NoWrap" Text="Search for mods..." Grid.Column="0" Margin="0,0,1,0"/>
-                <Button Content="Search" Grid.Column="1" Margin="0,0,1,0"/>
+                <TextBox TextWrapping="NoWrap" Text="Search for mods..." Grid.Column="0" Margin="0,0,1,0"
+                         x:Name="SearchBox" KeyDown="Search_KeyDown"/>
+                <Button Content="Search" Grid.Column="1" Margin="0,0,1,0" Click="Search_Click"/>
                 <Button Content="Apply" Grid.Column="2"/>
             </Grid>
 
@@ -137,7 +138,13 @@
                     <DataGridTextColumn Header="Likes" Binding="{Binding Likes}" Width="40" IsReadOnly="True"/>
                     <DataGridTextColumn Header="Author" Binding="{Binding Author}" Width="85" IsReadOnly="True"/>
                     <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="True"/>
-                    <DataGridCheckBoxColumn Header="Installed" Binding="{Binding Installed, UpdateSourceTrigger=PropertyChanged}" Width="55"/>
+                    <DataGridTemplateColumn Header="Installed" Width="55">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding Installed, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTemplateColumn Header="Update" Width="55">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>

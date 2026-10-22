@@ -28,6 +28,23 @@ public partial class MainWindow : Window
         await GetFeatured();
     }
 
+    private void Search_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key is System.Windows.Input.Key.Enter or System.Windows.Input.Key.Return)
+        {
+            e.Handled = true;
+            RunSearchAsync();
+        }
+    }
+
+    private void Search_Click(object sender, RoutedEventArgs e) =>
+        RunSearchAsync();
+
+    private async void RunSearchAsync()
+    {
+        await SearchAsync(SearchBox.Text);
+    }
+
     private async Task SearchAsync(string unformattedQuery)
     {
         string[] parts = unformattedQuery.Split(' ');
@@ -75,6 +92,7 @@ public partial class MainWindow : Window
 
         SearchSubmissions submissions = await Gamebanana.Games.Search.SearchAsync(DeadlockGameId, queryText,
             sort, includeTypes, excludeTypes);
+        Mods.Clear();
 
         foreach (SearchSubmission submission in submissions.Submissions)
         {
