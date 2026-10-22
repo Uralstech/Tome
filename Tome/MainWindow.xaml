@@ -61,29 +61,8 @@
             </UniformGrid>
 
             <DataGrid x:Name="ModsGrid" Grid.Row="2"
-                  AutoGenerateColumns="False"
-                  CanUserAddRows="False"
-                  CanUserDeleteRows="False"
-                  CanUserReorderColumns="False"
-                  CanUserResizeColumns="True"
-                  CanUserResizeRows="False"
-                  CanUserSortColumns="True"
-                  HeadersVisibility="Column"
-                  Background="Transparent"
-                  RowBackground="Beige"
-                  AlternatingRowBackground="LightYellow">
-
-                <DataGrid.ColumnHeaderStyle>
-                    <Style TargetType="DataGridColumnHeader">
-                        <Setter Property="FontSize" Value="11"/>
-                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
-                        <Setter Property="VerticalContentAlignment" Value="Center"/>
-                        <Setter Property="Background" Value="LightYellow"/>
-                        <Setter Property="BorderBrush" Value="Gray"/>
-                        <Setter Property="BorderThickness" Value="0.6"/>
-                        <Setter Property="Padding" Value="5,1,5,1"/>
-                    </Style>
-                </DataGrid.ColumnHeaderStyle>
+                      Style="{StaticResource DataGridStyle}"
+                      ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}">
 
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Likes" Binding="{Binding Likes}" Width="40" IsReadOnly="True"/>
