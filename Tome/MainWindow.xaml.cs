@@ -11,6 +11,8 @@ public partial class MainWindow : Window
     private readonly GamebananaService _gamebanana = new();
     private readonly SemaphoreSlim _getSemaphore = new(1, 1);
 
+    private ToggleButton? _currentChecked = null;
+
     public ObservableCollection<Mod> Mods { get; } = [];
 
     public MainWindow()
@@ -40,8 +42,8 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this,
-                $"Operation failed: {ex.Message}",
-                "Please try again or report this issue on GitHub.",
+                ex.ToString(),
+                "Operation failed",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
@@ -50,20 +52,36 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Window_Loaded(object sender, RoutedEventArgs e) =>
+    private void SetChecked(ToggleButton? newChecked)
+    {
+        if (ReferenceEquals(_currentChecked, newChecked))
+            return;
+
+        _currentChecked?.IsChecked = false;
+        _currentChecked = newChecked;
+    }
+
+    private void Window_Loaded(object sender, RoutedEventArgs e)
+    {
         FeaturedButton.IsChecked = true;
+        SetChecked(FeaturedButton);
+    }
 
     private void Search_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key is System.Windows.Input.Key.Enter or System.Windows.Input.Key.Return)
         {
             e.Handled = true;
+            SetChecked(null);
             RunModsUpdateSafe(() => _gamebanana.SearchAsync(SearchBox.Text));
         }
     }
 
-    private void Search_Click(object sender, RoutedEventArgs e) =>
+    private void Search_Click(object sender, RoutedEventArgs e)
+    {
+        SetChecked(null);
         RunModsUpdateSafe(() => _gamebanana.SearchAsync(SearchBox.Text));
+    }
 
     private void InfoButton_Click(object sender, RoutedEventArgs e)
     {
@@ -71,16 +89,10 @@ public partial class MainWindow : Window
 
     private void Category_Checked(object sender, RoutedEventArgs e)
     {
-        if (sender is not ToggleButton selectedButton
-            || selectedButton.Parent is not Panel parent)
+        if (sender is not ToggleButton selectedButton)
             return;
 
-        foreach (object? child in parent.Children)
-        {
-            if (child is ToggleButton button
-                && button != selectedButton)
-                button.IsChecked = false;
-        }
+        SetChecked(selectedButton);
 
         if (ReferenceEquals(sender, FeaturedButton))
             RunModsUpdateSafe(() => _gamebanana.GetFeaturedAsync());
