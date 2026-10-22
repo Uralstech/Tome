@@ -1,8 +1,9 @@
 ﻿using GamebananaAPI;
-using GamebananaAPI.Data.Game;
 using GamebananaAPI.Data.Game.Featured;
+using GamebananaAPI.Data.Game.Search;
 using GamebananaAPI.Data.Game.TopSubs;
 using System.Collections.ObjectModel;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -25,6 +26,69 @@ public partial class MainWindow : Window
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
         await GetFeatured();
+    }
+
+    private async Task SearchAsync(string unformattedQuery)
+    {
+        string[] parts = unformattedQuery.Split(' ');
+        StringBuilder query = new();
+
+        string? sort = null;
+        string? includeTypes = null;
+        string? excludeTypes = null;
+        GamebananaAPI.Data.Game.Visibility showVisibility = GamebananaAPI.Data.Game.Visibility.Show;
+
+        foreach (string sub in parts)
+        {
+            int split = sub.IndexOf(':');
+            if (sub[0] != '$' || split != sub.LastIndexOf(':'))
+            {
+                query.Append(sub).Append(' ');
+                continue;
+            }
+
+            string param = sub[(split + 1)..];
+            switch (sub[..split])
+            {
+                case "$sort":
+                    sort = param; break;
+
+                case "$types":
+                    includeTypes = param; break;
+
+                case "$^types":
+                    excludeTypes = param; break;
+
+                case "$show":
+                    showVisibility = param switch
+                    {
+                        "all" => GamebananaAPI.Data.Game.Visibility.Hide,
+                        "warned" => GamebananaAPI.Data.Game.Visibility.Warn,
+                        "default" or _ => GamebananaAPI.Data.Game.Visibility.Show,
+                    }; break;
+            }
+        }
+
+        string queryText = query.ToString().Trim();
+        if (string.IsNullOrEmpty(queryText))
+            return;
+
+        SearchSubmissions submissions = await Gamebanana.Games.Search.SearchAsync(DeadlockGameId, queryText,
+            sort, includeTypes, excludeTypes);
+
+        foreach (SearchSubmission submission in submissions.Submissions)
+        {
+            if ((int)submission.SafeForWork > (int)showVisibility)
+                continue;
+
+            Mods.Add(new Mod()
+            {
+                Id = submission.Id,
+                Name = submission.Name,
+                Likes = submission.Likes,
+                Author = submission.Author.Name
+            });
+        }
     }
 
     private async Task GetTopSubmissions()
