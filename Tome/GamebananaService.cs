@@ -53,7 +53,7 @@ public class GamebananaService : IDisposable
             }
 
             int split = sub.IndexOf(':');
-            if (split <= 1 || split != sub.LastIndexOf(':'))
+            if (split <= 1)
             {
                 query.Append(sub)
                      .Append(' ');
@@ -63,6 +63,25 @@ public class GamebananaService : IDisposable
             string param = sub[(split + 1)..];
             switch (sub[..split])
             {
+                case "$typeId":
+                    string[] typeId = param.Split(',');
+                    if (typeId.Length != 2 || !int.TryParse(typeId[1], out int id))
+                        throw new FormatException("typeId must be [submission type],[numerical submission ID]");
+
+                    string type = typeId[0];
+                    SubmissionProfile submission = await GetSubmissionAsync(id, type);
+                    return [new Mod()
+                    {
+                        Id = submission.Id,
+                        Type = type,
+                        Name = submission.Name,
+                        Likes = submission.Likes,
+                        Author = submission.Author.Name
+                    }];
+
+                case "$link":
+                    return await ParseLinkAsync(param);
+
                 case "$sort":
                     sort = param; break;
 
@@ -112,6 +131,40 @@ public class GamebananaService : IDisposable
 
         _cache.Set(GetCacheKey(), mods, s_searchCacheTime);
         return mods;
+    }
+
+    public async Task<IReadOnlyList<Mod>> ParseLinkAsync(string link)
+    {
+        if (!Uri.TryCreate(link, UriKind.Absolute, out Uri? uri))
+            throw new ArgumentException("Invalid submission link.");
+
+        string path = uri.AbsolutePath.Trim('/');
+        int splitIndex = path.IndexOf('/');
+        if (splitIndex < 1 || splitIndex != path.LastIndexOf('/'))
+            throw new ArgumentException("Invalid submission link.");
+
+        string type = string.Empty;
+        string uriType = path[..splitIndex];
+
+        if (uriType.CompareTo("sounds", StringComparison.InvariantCultureIgnoreCase) == 0)
+            type = "Sound";
+        else if (uriType.CompareTo("mods", StringComparison.InvariantCultureIgnoreCase) == 0)
+            type = "Mod";
+        else
+            throw new NotSupportedException("Unknown or unsupported submission type.");
+
+        if (!int.TryParse(path[(splitIndex + 1)..], out int id))
+            throw new ArgumentException("Invalid submission ID.");
+
+        SubmissionProfile submission = await GetSubmissionAsync(id, type);
+        return [new Mod()
+                {
+                    Id = submission.Id,
+                    Type = type,
+                    Name = submission.Name,
+                    Likes = submission.Likes,
+                    Author = submission.Author.Name
+                }];
     }
 
     public async Task<IReadOnlyList<Mod>> GetTopSubmissionsAsync(Visibility defaultVisibility = Visibility.Show)

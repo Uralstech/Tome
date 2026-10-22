@@ -3,6 +3,7 @@ using GamebananaAPI.Data.Game.Search;
 using GamebananaAPI.Data.Game.TopSubs;
 using GamebananaAPI.Data.Submission;
 using System.Collections.Specialized;
+using System.Text;
 using System.Web;
 
 namespace GamebananaAPI;
@@ -72,7 +73,26 @@ public static class Gamebanana
     {
         public static async Task<SubmissionProfile> PropertiesAsync(int submission, string type, CancellationToken token = default)
         {
-            Uri uri = new(BaseUri, $"{type}/{submission}?_csvProperties=@gbprofile");
+            StringBuilder requestedProperties = new();
+            requestedProperties.Append("_idRow,")
+                               .Append("_tsDateAdded,")
+                               .Append("_tsDateModified,")
+                               .Append("_tsDateUpdated,")
+                               .Append("_sName,")
+                               .Append("_bIsNsfw,")
+                               .Append("_sProfileUrl,")
+                               .Append("_nSubscriberCount,")
+                               .Append("_nThanksCount,")
+                               .Append("_nDownloadCount,")
+                               .Append("_nViewCount,")
+                               .Append("_nLikeCount,")
+                               .Append("_aSubmitter,")
+                               .Append("_aStudio,")
+                               .Append("_sLicense,")
+                               .Append("_aLicenseChecklist,")
+                               .Append("_aFiles");
+
+            Uri uri = new(BaseUri, $"{type}/{submission}?_csvProperties={requestedProperties}");
             return await ApiClient.GetAsync(uri, SubmissionJsonContext.Default.SubmissionProfile, token);
         }
     }
