@@ -6,23 +6,22 @@ namespace Tome;
 
 public partial class MainWindow : Window
 {
-    private readonly GamebananaService _gamebanana = new();
     private readonly SemaphoreSlim _getSemaphore = new(1, 1);
+    private readonly GamebananaService _gamebanana;
 
+    private readonly ObservableCollection<Mod> _mods = [];
     private ToggleButton? _currentChecked = null;
 
-    public ObservableCollection<Mod> Mods { get; } = [];
-
-    public MainWindow()
+    public MainWindow(GamebananaService gamebanana)
     {
         InitializeComponent();
 
-        ModsGrid.ItemsSource = Mods;
+        _gamebanana = gamebanana;
+        ModsGrid.ItemsSource = _mods;
     }
 
     protected override void OnClosed(EventArgs e)
     {
-        _gamebanana.Dispose();
         _getSemaphore.Dispose();
 
         base.OnClosed(e);
@@ -48,9 +47,9 @@ public partial class MainWindow : Window
         await _getSemaphore.WaitAsync();
         try
         {
-            Mods.Clear();
+            _mods.Clear();
             foreach (Mod mod in await func())
-                Mods.Add(mod);
+                _mods.Add(mod);
         }
         catch (Exception ex)
         {

@@ -8,7 +8,7 @@ using System.Text;
 
 namespace Tome;
 
-internal class GamebananaService : IDisposable
+public class GamebananaService : IDisposable
 {
     private const int DeadlockGameId = 20948;
 
