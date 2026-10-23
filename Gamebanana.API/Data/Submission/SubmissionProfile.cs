@@ -53,6 +53,9 @@ public class SubmissionProfile
     [JsonPropertyName("_aStudio")]
     public SubmissionAuthor? Studio { get; set; }
 
+    [JsonPropertyName("_bIsObsolete")]
+    public bool IsObsolete { get; set; }
+
     [JsonPropertyName("_sLicense")]
     public string LicenseHtml { get; set; }
 

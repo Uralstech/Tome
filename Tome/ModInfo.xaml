@@ -17,9 +17,8 @@
                       GlassFrameThickness="0"
                       UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
-    
+
     <Window.Resources>
-        <converters:SafetyLabelConverter x:Key="SafetyLabelConverter"/>
         <converters:LicensePermissionsConverter x:Key="LicensePermissionsConverter"/>
     </Window.Resources>
 
@@ -44,7 +43,20 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Column="0" Text="{Binding Name}" Style="{StaticResource EllipsisTextBlockStyle}" FontSize="20" MaxWidth="350"/>
+                    <TextBlock Grid.Column="0" FontSize="20" MaxWidth="350">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock"
+                                   BasedOn="{StaticResource EllipsisTextBlockStyle}">
+                                <Setter Property="Text" Value="{Binding Name}"/>
+
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsObsolete}" Value="True">
+                                        <Setter Property="Text" Value="{Binding Name, StringFormat='&lt;OBSOLETE&gt; {0}'}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                     <Grid Grid.Column="1" Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -105,7 +117,19 @@
                 </Grid.ColumnDefinitions>
 
                 <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Margin="0,0,1,0" Background="LightYellow">
-                    <TextBlock Text="{Binding IsNotSafeForWork, Converter={StaticResource SafetyLabelConverter}}" FontSize="11" Padding="5,1,5,1"/>
+                    <TextBlock FontSize="11" Padding="5,1,5,1">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="SFW"/>
+
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsNotSafeForWork}" Value="True">
+                                        <Setter Property="Text" Value="NSFW"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </Border>
 
                 <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Margin="0,0,1,0" Background="LightYellow">

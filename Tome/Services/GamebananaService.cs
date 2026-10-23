@@ -25,13 +25,15 @@ public class GamebananaService : IDisposable
     {
         string GetCacheKey() => $"submissionProfile:{id}";
 
-        if (_cache.TryGetValue(GetCacheKey(), out object? cachedVal)
-            && cachedVal is SubmissionProfile cachedProfile)
-            return cachedProfile;
+        if (!_cache.TryGetValue(GetCacheKey(), out object? cachedVal)
+            || cachedVal is not SubmissionProfile profile)
+        {
+            profile = await Gamebanana.Submission.PropertiesAsync(id, type);
+            _cache.Set(GetCacheKey(), profile, s_submissionCacheTime);
+        }
 
-        SubmissionProfile profile = await Gamebanana.Submission.PropertiesAsync(id, type);
-        _cache.Set(GetCacheKey(), profile, s_submissionCacheTime);
-        return profile;
+        return profile.Files is { Count: > 0 }
+            ? profile : throw new InvalidOperationException("Cannot use mod with no listed files.");
     }
 
     public async Task<IReadOnlyList<Mod>> SearchAsync(string unformattedQuery, Visibility defaultVisibility = Visibility.Show)
@@ -123,12 +125,13 @@ public class GamebananaService : IDisposable
             sort, includeTypes, excludeTypes);
 
         Mod[] mods = submissions.Submissions
-            .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)visibility)
+            .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)visibility && sub.HasFiles)
             .Select(static sub => new Mod()
             {
                 Id = sub.Id,
                 Type = sub.Type,
-                Name = sub.Name,
+                Name = sub.IsObsolete
+                    ? "<OBSOLETE> " + sub.Name : sub.Name,
                 Likes = sub.Likes,
                 Author = sub.Author.Name
             }).ToArray();
@@ -231,12 +234,13 @@ public class GamebananaService : IDisposable
                 .ThenByDescending(static feat => feat.Date)
                 .Select(static feat => GetPriority(feat.Group))
                 .FirstOrDefault(int.MaxValue))
-            .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)defaultVisibility)
+            .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)defaultVisibility && sub.HasFiles)
             .Select(static sub => new Mod()
             {
                 Id = sub.Id,
                 Type = sub.Type,
-                Name = sub.Name,
+                Name = sub.IsObsolete
+                    ? "<OBSOLETE> " + sub.Name : sub.Name,
                 Likes = sub.Likes,
                 Author = sub.Author.Name
             }).ToArray();

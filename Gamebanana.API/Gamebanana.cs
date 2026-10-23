@@ -88,6 +88,7 @@ public static class Gamebanana
                                .Append("_nLikeCount,")
                                .Append("_aSubmitter,")
                                .Append("_aStudio,")
+                               .Append("_bIsObsolete,")
                                .Append("_sLicense,")
                                .Append("_aLicenseChecklist,")
                                .Append("_aFiles");
