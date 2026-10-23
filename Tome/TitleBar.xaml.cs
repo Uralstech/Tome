@@ -3,7 +3,7 @@ using System.Windows.Controls;
 
 namespace Tome;
 
-public partial class TitleBar : UserControl
+public sealed partial class TitleBar : UserControl
 {
     public static readonly DependencyProperty MenuContentProperty =
         DependencyProperty.Register(

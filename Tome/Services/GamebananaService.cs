@@ -10,7 +10,7 @@ using Tome.Models;
 
 namespace Tome.Services;
 
-public class GamebananaService : IDisposable
+public sealed class GamebananaService : IDisposable
 {
     private const int DeadlockGameId = 20948;
 
@@ -36,7 +36,7 @@ public class GamebananaService : IDisposable
             ? profile : throw new InvalidOperationException("Cannot use mod with no listed files.");
     }
 
-    public async Task<IReadOnlyList<Mod>> SearchAsync(string unformattedQuery, Visibility defaultVisibility = Visibility.Show)
+    public async Task<IReadOnlyList<ListedMod>> SearchAsync(string unformattedQuery, Visibility defaultVisibility = Visibility.Show)
     {
         string[] parts = unformattedQuery.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         StringBuilder query = new();
@@ -76,7 +76,7 @@ public class GamebananaService : IDisposable
                         throw new NotSupportedException("Unknown or unsupported submission type.");
 
                     SubmissionProfile submission = await GetSubmissionAsync(id, type);
-                    return [new Mod()
+                    return [new ListedMod()
                     {
                         Id = submission.Id,
                         Type = type,
@@ -118,15 +118,15 @@ public class GamebananaService : IDisposable
         string GetCacheKey() => $"search:{queryText}:{sort}:{includeTypes}:{excludeTypes}:{visibility}";
 
         if (_cache.TryGetValue(GetCacheKey(), out object? cachedVal)
-            && cachedVal is IReadOnlyList<Mod> cachedMods)
+            && cachedVal is IReadOnlyList<ListedMod> cachedMods)
             return cachedMods;
 
         SearchSubmissions submissions = await Gamebanana.Games.Search.SearchAsync(DeadlockGameId, queryText,
             sort, includeTypes, excludeTypes);
 
-        Mod[] mods = submissions.Submissions
+        ListedMod[] mods = submissions.Submissions
             .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)visibility && sub.HasFiles)
-            .Select(static sub => new Mod()
+            .Select(static sub => new ListedMod()
             {
                 Id = sub.Id,
                 Type = sub.Type,
@@ -140,7 +140,7 @@ public class GamebananaService : IDisposable
         return mods;
     }
 
-    public async Task<IReadOnlyList<Mod>> ParseLinkAsync(string link)
+    public async Task<IReadOnlyList<ListedMod>> ParseLinkAsync(string link)
     {
         if (!Uri.TryCreate(link, UriKind.Absolute, out Uri? uri))
             throw new ArgumentException("Invalid submission link.");
@@ -164,7 +164,7 @@ public class GamebananaService : IDisposable
             throw new ArgumentException("Invalid submission ID.");
 
         SubmissionProfile submission = await GetSubmissionAsync(id, type);
-        return [new Mod()
+        return [new ListedMod()
                 {
                     Id = submission.Id,
                     Type = type,
@@ -174,7 +174,7 @@ public class GamebananaService : IDisposable
                 }];
     }
 
-    public async Task<IReadOnlyList<Mod>> GetTopSubmissionsAsync(Visibility defaultVisibility = Visibility.Show)
+    public async Task<IReadOnlyList<ListedMod>> GetTopSubmissionsAsync(Visibility defaultVisibility = Visibility.Show)
     {
         static int GetPriority(TopSubmissionPeriod group) => group switch
         {
@@ -191,14 +191,14 @@ public class GamebananaService : IDisposable
         string GetCacheKey() => $"topSubmissions:{defaultVisibility}";
 
         if (_cache.TryGetValue(GetCacheKey(), out object? cachedVal)
-            && cachedVal is IReadOnlyList<Mod> cachedMods)
+            && cachedVal is IReadOnlyList<ListedMod> cachedMods)
             return cachedMods;
 
         List<TopSubmission> top = await Gamebanana.Games.Search.TopSubmissionsAsync(DeadlockGameId);
-        Mod[] mods = top
+        ListedMod[] mods = top
             .OrderBy(static sub => GetPriority(sub.Period))
             .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)defaultVisibility)
-            .Select(static sub => new Mod()
+            .Select(static sub => new ListedMod()
             {
                 Id = sub.Id,
                 Type = sub.Type,
@@ -211,7 +211,7 @@ public class GamebananaService : IDisposable
         return mods;
     }
 
-    public async Task<IReadOnlyList<Mod>> GetFeaturedAsync(Visibility defaultVisibility = Visibility.Show)
+    public async Task<IReadOnlyList<ListedMod>> GetFeaturedAsync(Visibility defaultVisibility = Visibility.Show)
     {
         static int GetPriority(FeaturingGroup group) => group switch
         {
@@ -224,18 +224,18 @@ public class GamebananaService : IDisposable
         string GetCacheKey() => $"featured:{defaultVisibility}";
 
         if (_cache.TryGetValue(GetCacheKey(), out object? cachedVal)
-            && cachedVal is IReadOnlyList<Mod> cachedMods)
+            && cachedVal is IReadOnlyList<ListedMod> cachedMods)
             return cachedMods;
 
         FeaturedSubmissions featured = await Gamebanana.Games.Search.FeaturedAsync(DeadlockGameId);
-        Mod[] mods = featured.Submissions
+        ListedMod[] mods = featured.Submissions
             .OrderBy(static sub =>
                 sub.Featurings.OrderBy(static feat => GetPriority(feat.Group))
                 .ThenByDescending(static feat => feat.Date)
                 .Select(static feat => GetPriority(feat.Group))
                 .FirstOrDefault(int.MaxValue))
             .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)defaultVisibility && sub.HasFiles)
-            .Select(static sub => new Mod()
+            .Select(static sub => new ListedMod()
             {
                 Id = sub.Id,
                 Type = sub.Type,

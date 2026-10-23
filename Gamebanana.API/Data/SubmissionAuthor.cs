@@ -8,8 +8,8 @@ public class SubmissionAuthor
     public int Id { get; set; }
 
     [JsonPropertyName("_sName")]
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
 
     [JsonPropertyName("_sProfileUrl")]
-    public string ProfileUrl { get; set; }
+    public string ProfileUrl { get; set; } = null!;
 }

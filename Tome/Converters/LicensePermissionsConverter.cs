@@ -22,7 +22,7 @@ public sealed class LicensePermissionsConverter : IValueConverter
             : "No license permissions provided.";
     }
 
-    private void AddSection(StringBuilder builder, string sectionName, string[]? values)
+    private static void AddSection(StringBuilder builder, string sectionName, string[]? values)
     {
         builder.Append(sectionName)
                .AppendLine(":");

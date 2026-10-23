@@ -9,12 +9,12 @@ using Tome.Services;
 
 namespace Tome;
 
-public partial class MainWindow : Window
+public sealed partial class MainWindow : Window
 {
     private readonly SemaphoreSlim _getSemaphore = new(1, 1);
     private readonly GamebananaService _gamebanana;
 
-    private readonly ObservableCollection<Mod> _mods = [];
+    private readonly ObservableCollection<ListedMod> _mods = [];
     private ToggleButton? _currentChecked = null;
 
     public MainWindow(GamebananaService gamebanana)
@@ -69,13 +69,13 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void RunModsUpdateSafe(Func<Task<IReadOnlyList<Mod>>> func)
+    private async void RunModsUpdateSafe(Func<Task<IReadOnlyList<ListedMod>>> func)
     {
         await _getSemaphore.WaitAsync();
         try
         {
             _mods.Clear();
-            foreach (Mod mod in await func())
+            foreach (ListedMod mod in await func())
                 _mods.Add(mod);
         }
         catch (Exception ex)
@@ -111,7 +111,7 @@ public partial class MainWindow : Window
     private void InfoButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button button
-            || button.Tag is not Mod mod)
+            || button.Tag is not ListedMod mod)
             return;
 
         ShowModInfoSafeAsync(mod.Id, mod.Type);

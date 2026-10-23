@@ -4,15 +4,15 @@ namespace GamebananaAPI.Data.Game.Search;
 
 [JsonSerializable(typeof(SearchSubmissions))]
 [JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization | JsonSourceGenerationMode.Metadata)]
-internal partial class GameSearchJsonContext : JsonSerializerContext;
+internal sealed partial class GameSearchJsonContext : JsonSerializerContext;
 
 public class SearchSubmissions
 {
     [JsonPropertyName("_aRecords")]
-    public List<SearchSubmission> Submissions { get; set; }
+    public List<SearchSubmission> Submissions { get; set; } = null!;
 
     [JsonPropertyName("_aMetadata")]
-    public SubmissionsMetadata Metadata { get; set; }
+    public SubmissionsMetadata Metadata { get; set; } = null!;
 }
 
 public class SearchSubmission
@@ -21,16 +21,16 @@ public class SearchSubmission
     public int Id { get; set; }
 
     [JsonPropertyName("_sModelName")]
-    public string Type { get; set; }
+    public string Type { get; set; } = null!;
 
     [JsonPropertyName("_sName")]
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
 
     [JsonPropertyName("_sInitialVisibility")]
     public Visibility SafeForWork { get; set; }
 
     [JsonPropertyName("_aSubmitter")]
-    public SubmissionAuthor Author { get; set; }
+    public SubmissionAuthor Author { get; set; } = null!;
 
     [JsonPropertyName("_nLikeCount")]
     public int Likes { get; set; }

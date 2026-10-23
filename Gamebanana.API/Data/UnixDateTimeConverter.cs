@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace GamebananaAPI.Data;
 
-internal class UnixDateTimeConverter : JsonConverter<DateTime>
+internal sealed class UnixDateTimeConverter : JsonConverter<DateTime>
 {
     public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {

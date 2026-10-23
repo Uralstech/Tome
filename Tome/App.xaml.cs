@@ -4,9 +4,9 @@ using Tome.Services;
 
 namespace Tome;
 
-public partial class App : Application
+public sealed partial class App : Application
 {
-    public static IServiceProvider Services { get; private set; }
+    public static IServiceProvider Services { get; private set; } = null!;
 
     public App()
     {

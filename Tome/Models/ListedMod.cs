@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Tome.Models;
 
-public class Mod : INotifyPropertyChanged
+public sealed class ListedMod : INotifyPropertyChanged
 {
     public required int Id { get; init; }
     public required string Type { get; init; } = string.Empty;
@@ -54,8 +54,8 @@ public class Mod : INotifyPropertyChanged
 
     public bool CanUpdate => Installed && HasUpdate;
 
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     private void OnPropertyChanged([CallerMemberName] string propertyName = "") =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 }

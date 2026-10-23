@@ -5,7 +5,7 @@ using System.Windows;
 
 namespace Tome;
 
-public partial class ModInfo : Window
+public sealed partial class ModInfo : Window
 {
     private readonly SubmissionProfile _profile;
 

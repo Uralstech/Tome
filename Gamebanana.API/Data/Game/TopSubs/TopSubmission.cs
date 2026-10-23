@@ -4,7 +4,7 @@ namespace GamebananaAPI.Data.Game.TopSubs;
 
 [JsonSerializable(typeof(List<TopSubmission>))]
 [JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization | JsonSourceGenerationMode.Metadata)]
-internal partial class GameTopSubsJsonContext : JsonSerializerContext;
+internal sealed partial class GameTopSubsJsonContext : JsonSerializerContext;
 
 public class TopSubmission
 {
@@ -12,10 +12,10 @@ public class TopSubmission
     public int Id { get; set; }
 
     [JsonPropertyName("_sModelName")]
-    public string Type { get; set; }
+    public string Type { get; set; } = null!;
 
     [JsonPropertyName("_sName")]
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
 
     [JsonPropertyName("_sInitialVisibility")]
     public Visibility SafeForWork { get; set; }
@@ -24,10 +24,10 @@ public class TopSubmission
     public TopSubmissionPeriod Period { get; set; }
 
     [JsonPropertyName("_aSubmitter")]
-    public SubmissionAuthor Author { get; set; }
+    public SubmissionAuthor Author { get; set; } = null!;
 
     [JsonPropertyName("_sDescription")]
-    public string Description { get; set; }
+    public string? Description { get; set; }
 
     [JsonPropertyName("_nLikeCount")]
     public int Likes { get; set; }
