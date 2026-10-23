@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace Tome;
+namespace Tome.Models;
 
 public class Mod : INotifyPropertyChanged
 {

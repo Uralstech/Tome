@@ -1,8 +1,11 @@
 ﻿using GamebananaAPI.Data.Submission;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using Tome.Models;
+using Tome.Services;
 
 namespace Tome;
 
@@ -125,5 +128,14 @@ public partial class MainWindow : Window
             RunModsUpdateSafe(() => _gamebanana.GetFeaturedAsync());
         else if (ReferenceEquals(sender, TopSubmissionsButton))
             RunModsUpdateSafe(() => _gamebanana.GetTopSubmissionsAsync());
+    }
+
+    private void GitHub_Click(object sender, RoutedEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = "https://github.com/Uralstech/Tome",
+            UseShellExecute = true
+        });
     }
 }

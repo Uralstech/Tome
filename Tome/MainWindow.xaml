@@ -28,7 +28,7 @@
                     </MenuItem>
 
                     <MenuItem Header="_Help">
-                        <MenuItem Header="_GitHub"/>
+                        <MenuItem Header="_GitHub" Click="GitHub_Click"/>
                     </MenuItem>
                 </Menu>
             </local:TitleBar.MenuContent>

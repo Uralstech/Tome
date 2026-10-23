@@ -6,8 +6,9 @@ using GamebananaAPI.Data.Game.TopSubs;
 using GamebananaAPI.Data.Submission;
 using Microsoft.Extensions.Caching.Memory;
 using System.Text;
+using Tome.Models;
 
-namespace Tome;
+namespace Tome.Services;
 
 public class GamebananaService : IDisposable
 {
