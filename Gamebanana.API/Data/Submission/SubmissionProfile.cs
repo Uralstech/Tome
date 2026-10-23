@@ -71,8 +71,26 @@ public class SubmissionProfile
     [JsonPropertyName("_sText")]
     public string? Text { get; set; }
 
+    [JsonPropertyName("_aCategory")]
+    public Category? Category { get; set; }
+
+    [JsonPropertyName("_aSuperCategory")]
+    public Category? SuperCategory { get; set; }
+
     [JsonPropertyName("_aCredits")]
     public List<CreditsGroup>? Credits { get; set; } = null!;
+}
+
+public class Category
+{
+    [JsonPropertyName("_idRow")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("_sName")]
+    public string Name { get; set; } = null!;
+
+    [JsonPropertyName("_sModelName")]
+    public string Type { get; set; } = null!;
 }
 
 public class CreditsGroup
