@@ -9,7 +9,7 @@ public sealed class LicensePermissionsConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        if (value is not SubmissionLicenseChecklist checklist)
+        if (value is not LicenseChecklist checklist)
             return "No license permissions provided.";
 
         StringBuilder sb = new();

@@ -1,5 +1,5 @@
 ﻿using GamebananaAPI;
-using GamebananaAPI.Data.Game;
+using GamebananaAPI.Data;
 using GamebananaAPI.Data.Game.Featured;
 using GamebananaAPI.Data.Game.Search;
 using GamebananaAPI.Data.Game.TopSubs;
@@ -101,7 +101,7 @@ public sealed class GamebananaService : IDisposable
                     visibility = param switch
                     {
                         "all" => Visibility.Hide,
-                        "warned" => Visibility.Warn,
+                        "warn" => Visibility.Warn,
                         "default" => defaultVisibility,
                         _ => visibility,
                     }; break;

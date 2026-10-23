@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         xmlns:local="clr-namespace:Tome"
+        xmlns:gamebanana="clr-namespace:GamebananaAPI.Data;assembly=Gamebanana.API"
         xmlns:converters="clr-namespace:Tome.Converters"
         mc:Ignorable="d"
         ResizeMode="NoResize"
@@ -20,6 +21,7 @@
 
     <Window.Resources>
         <converters:LicensePermissionsConverter x:Key="LicensePermissionsConverter"/>
+        <converters:CreditsGroupsConverter x:Key="CreditsGroupsConverter"/>
     </Window.Resources>
 
     <DockPanel LastChildFill="True">
@@ -123,8 +125,11 @@
                                 <Setter Property="Text" Value="SFW"/>
 
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsNotSafeForWork}" Value="True">
+                                    <DataTrigger Binding="{Binding SafeForWork}" Value="{x:Static gamebanana:Visibility.Hide}">
                                         <Setter Property="Text" Value="NSFW"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding SafeForWork}" Value="{x:Static gamebanana:Visibility.Warn}">
+                                        <Setter Property="Text" Value="Content Warning"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -175,6 +180,41 @@
 
             <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Orientation="Vertical">
+                    <Border BorderBrush="Gray" BorderThickness="1" Background="LightYellow" Padding="5,2,5,5" Margin="0,0,0,1">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Description}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        
+                        <StackPanel>
+                            <TextBlock Text="Description" FontSize="12" Margin="0,0,0,3"/>
+                            <TextBox Text="{Binding Description}" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Disabled"/>
+                        </StackPanel>
+                    </Border>
+                    <Border BorderBrush="Gray" BorderThickness="1" Background="LightYellow" Padding="5,2,5,5" Margin="0,0,0,1">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Credits}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Credits.Count}" Value="0">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+
+                        <StackPanel>
+                            <TextBlock Text="Credits" FontSize="12" Margin="0,0,0,3"/>
+                            <TextBox Text="{Binding Credits, Converter={StaticResource CreditsGroupsConverter}}" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Disabled"/>
+                        </StackPanel>
+                    </Border>
                     <Border BorderBrush="Gray" BorderThickness="1" Background="LightYellow" Padding="5,2,5,5" Margin="0,0,0,1">
                         <StackPanel>
                             <TextBlock Text="License Permissions" FontSize="12" Margin="0,0,0,3"/>

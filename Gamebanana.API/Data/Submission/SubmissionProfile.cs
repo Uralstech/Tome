@@ -26,8 +26,8 @@ public class SubmissionProfile
     [JsonPropertyName("_sName")]
     public string Name { get; set; } = null!;
 
-    [JsonPropertyName("_bIsNsfw")]
-    public bool IsNotSafeForWork { get; set; }
+    [JsonPropertyName("_sInitialVisibility")]
+    public Visibility SafeForWork { get; set; }
 
     [JsonPropertyName("_sProfileUrl")]
     public string ProfileUrl { get; set; } = null!;
@@ -60,13 +60,46 @@ public class SubmissionProfile
     public string LicenseHtml { get; set; } = null!;
 
     [JsonPropertyName("_aLicenseChecklist")]
-    public SubmissionLicenseChecklist? LicenseChecklist { get; set; }
+    public LicenseChecklist? LicenseChecklist { get; set; }
 
     [JsonPropertyName("_aFiles")]
     public List<SubmissionFile>? Files { get; set; }
+
+    [JsonPropertyName("_sDescription")]
+    public string? Description { get; set; }
+
+    [JsonPropertyName("_sText")]
+    public string? Text { get; set; }
+
+    [JsonPropertyName("_aCredits")]
+    public List<CreditsGroup>? Credits { get; set; } = null!;
 }
 
-public class SubmissionLicenseChecklist
+public class CreditsGroup
+{
+    [JsonPropertyName("_sGroupName")]
+    public string GroupName { get; set; } = null!;
+
+    [JsonPropertyName("_aAuthors")]
+    public List<CreditedAuthor> Authors { get; set; } = null!;
+}
+
+public class CreditedAuthor
+{
+    [JsonPropertyName("_sName")]
+    public string Name { get; set; } = null!;
+
+    [JsonPropertyName("_sRole")]
+    public string? Role { get; set; }
+
+    [JsonPropertyName("_sProfileUrl")]
+    public string? ProfileUrl { get; set; }
+
+    [JsonPropertyName("_sUrl")]
+    public string? OtherUrl { get; set; }
+}
+
+public class LicenseChecklist
 {
     [JsonPropertyName("yes")]
     public string[]? Yes { get; set; }

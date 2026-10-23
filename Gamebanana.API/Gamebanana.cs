@@ -73,27 +73,7 @@ public static class Gamebanana
     {
         public static async Task<SubmissionProfile> PropertiesAsync(int submission, string type, CancellationToken token = default)
         {
-            StringBuilder requestedProperties = new();
-            requestedProperties.Append("_idRow,")
-                               .Append("_tsDateAdded,")
-                               .Append("_tsDateModified,")
-                               .Append("_tsDateUpdated,")
-                               .Append("_sName,")
-                               .Append("_bIsNsfw,")
-                               .Append("_sProfileUrl,")
-                               .Append("_nSubscriberCount,")
-                               .Append("_nThanksCount,")
-                               .Append("_nDownloadCount,")
-                               .Append("_nViewCount,")
-                               .Append("_nLikeCount,")
-                               .Append("_aSubmitter,")
-                               .Append("_aStudio,")
-                               .Append("_bIsObsolete,")
-                               .Append("_sLicense,")
-                               .Append("_aLicenseChecklist,")
-                               .Append("_aFiles");
-
-            Uri uri = new(BaseUri, $"{type}/{submission}?_csvProperties={requestedProperties}");
+            Uri uri = new(BaseUri, $"{type}/{submission}/ProfilePage");
             return await ApiClient.GetAsync(uri, SubmissionJsonContext.Default.SubmissionProfile, token);
         }
     }
