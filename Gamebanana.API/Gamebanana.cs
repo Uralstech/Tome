@@ -1,9 +1,9 @@
-﻿using GamebananaAPI.Data.Game.Featured;
+﻿using GamebananaAPI.Data.Categories;
+using GamebananaAPI.Data.Game.Featured;
 using GamebananaAPI.Data.Game.Search;
 using GamebananaAPI.Data.Game.TopSubs;
 using GamebananaAPI.Data.Submission;
 using System.Collections.Specialized;
-using System.Text;
 using System.Web;
 
 namespace GamebananaAPI;
@@ -14,6 +14,15 @@ public static class Gamebanana
 
     public static class Games
     {
+        public static class Category
+        {
+            public static async Task<List<TopLevelCategoryDefinition>> GetCategoryDefinitionsAsync(int game, CancellationToken token = default)
+            {
+                Uri uri = new(BaseUri, $"Game/{game}/CategoryTree");
+                return await ApiClient.GetAsync(uri, CategoryJsonContext.Default.ListTopLevelCategoryDefinition, token);
+            }
+        }
+
         public static class Search
         {
             public static async Task<List<TopSubmission>> TopSubmissionsAsync(int game, CancellationToken token = default)
@@ -75,6 +84,15 @@ public static class Gamebanana
         {
             Uri uri = new(BaseUri, $"{type}/{submission}/ProfilePage");
             return await ApiClient.GetAsync(uri, SubmissionJsonContext.Default.SubmissionProfile, token);
+        }
+    }
+
+    public static class Category
+    {
+        public static async Task<List<CategoryDefinition>> GetCategoryDefinitionsAsync(string categoryType, int game, CancellationToken token = default)
+        {
+            Uri uri = new(BaseUri, $"Util/{categoryType}/NestedStructure?_idGameRow={game}");
+            return await ApiClient.GetAsync(uri, CategoryJsonContext.Default.ListCategoryDefinition, token);
         }
     }
 }
