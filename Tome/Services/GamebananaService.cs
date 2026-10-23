@@ -70,6 +70,9 @@ public class GamebananaService : IDisposable
                         throw new FormatException("typeId must be [submission type],[numerical submission ID]");
 
                     string type = typeId[0];
+                    if (type is not ("Sound" or "Mod"))
+                        throw new NotSupportedException("Unknown or unsupported submission type.");
+
                     SubmissionProfile submission = await GetSubmissionAsync(id, type);
                     return [new Mod()
                     {
@@ -120,7 +123,7 @@ public class GamebananaService : IDisposable
             sort, includeTypes, excludeTypes);
 
         Mod[] mods = submissions.Submissions
-            .Where(sub => (int)sub.SafeForWork <= (int)visibility)
+            .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)visibility)
             .Select(static sub => new Mod()
             {
                 Id = sub.Id,
@@ -191,7 +194,7 @@ public class GamebananaService : IDisposable
         List<TopSubmission> top = await Gamebanana.Games.Search.TopSubmissionsAsync(DeadlockGameId);
         Mod[] mods = top
             .OrderBy(static sub => GetPriority(sub.Period))
-            .Where(sub => (int)sub.SafeForWork <= (int)defaultVisibility)
+            .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)defaultVisibility)
             .Select(static sub => new Mod()
             {
                 Id = sub.Id,
@@ -228,7 +231,7 @@ public class GamebananaService : IDisposable
                 .ThenByDescending(static feat => feat.Date)
                 .Select(static feat => GetPriority(feat.Group))
                 .FirstOrDefault(int.MaxValue))
-            .Where(sub => (int)sub.SafeForWork <= (int)defaultVisibility)
+            .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)defaultVisibility)
             .Select(static sub => new Mod()
             {
                 Id = sub.Id,
