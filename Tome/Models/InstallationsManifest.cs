@@ -60,6 +60,10 @@ public sealed class InstalledMod
     [JsonPropertyName("originalFileName")]
     public required string OriginalFileName { get; set; }
 
+    /// <summary>The original MD5 file checksum from Gamebanana.</summary>
+    [JsonPropertyName("originalFileMd5Checksum")]
+    public required string OriginalFileMd5Checksum { get; set; } = null!;
+
     /// <summary>The date the file was uploaded to Gamebanana.</summary>
     [JsonPropertyName("originalFileUploadDate")]
     public required DateTime OriginalFileUploadDate { get; set; }
@@ -68,7 +72,6 @@ public sealed class InstalledMod
     [JsonPropertyName("listingMetadata")]
     public ListingMetadata? ListingMetadata { get; set; }
 }
-
 
 /// <summary>Optional mod metadata that may be displayed in Tome's GUI.</summary>
 public sealed class ListingMetadata
