@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Gamebanana.API\Gamebanana.API.csproj" />
+    <ProjectReference Include="..\GamebananaAPI\GamebananaAPI.csproj" />
   </ItemGroup>
 
 </Project>

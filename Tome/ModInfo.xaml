@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         xmlns:local="clr-namespace:Tome"
-        xmlns:gamebanana="clr-namespace:GamebananaAPI.Data;assembly=Gamebanana.API"
+        xmlns:gamebanana="clr-namespace:GamebananaAPI.Data;assembly=GamebananaAPI"
         xmlns:converters="clr-namespace:Tome.Converters"
         mc:Ignorable="d"
         ResizeMode="NoResize"

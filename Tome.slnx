@@ -1,4 +1,4 @@
 <Solution>
-  <Project Path="Gamebanana.API/Gamebanana.API.csproj" Id="46d3afc6-0267-42bf-8f31-70d49ce44272" />
+  <Project Path="GamebananaAPI/GamebananaAPI.csproj" />
   <Project Path="Tome/Tome.csproj" />
 </Solution>
