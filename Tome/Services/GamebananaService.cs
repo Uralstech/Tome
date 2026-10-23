@@ -1,5 +1,6 @@
 ﻿using GamebananaAPI;
 using GamebananaAPI.Data;
+using GamebananaAPI.Data.Categories;
 using GamebananaAPI.Data.Game.Featured;
 using GamebananaAPI.Data.Game.Search;
 using GamebananaAPI.Data.Game.TopSubs;
@@ -14,12 +15,65 @@ public sealed class GamebananaService : IDisposable
 {
     private const int DeadlockGameId = 20948;
 
+    private static readonly TimeSpan s_topLevelCategoryDefinitionsCacheTime = TimeSpan.FromHours(1);
+    private static readonly TimeSpan s_flatCategoryDefinitionsCacheTime = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan s_submissionCacheTime = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan s_featuredCacheTime = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan s_topSubmissionsCacheTime = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan s_searchCacheTime = TimeSpan.FromSeconds(30);
 
     private readonly MemoryCache _cache = new(new MemoryCacheOptions());
+
+    public async Task<IReadOnlyDictionary<string, TopLevelCategoryDefinition>> GetTopLevelCategoryDefinitionsAsync()
+    {
+        static string GetCacheKey() => "topLevelCategoryDefinitions";
+
+        if (_cache.TryGetValue(GetCacheKey(), out object? cachedVal)
+            && cachedVal is IReadOnlyDictionary<string, TopLevelCategoryDefinition> cachedCategoryDefinitions)
+            return cachedCategoryDefinitions;
+
+        List<TopLevelCategoryDefinition> flatCategoryDefinitions = await Gamebanana.Games.Category.GetCategoryDefinitionsAsync(DeadlockGameId);
+        Dictionary<string, TopLevelCategoryDefinition> categoryDefinitions = new(flatCategoryDefinitions.Count);
+
+        foreach (TopLevelCategoryDefinition categoryDefinition in flatCategoryDefinitions)
+        {
+            if (!categoryDefinitions.TryAdd(categoryDefinition.CategoryType, categoryDefinition))
+                throw new FormatException("Duplicate category types were returned by Gamebanana APIs.");
+        }
+
+        _cache.Set(GetCacheKey(), categoryDefinitions, s_topLevelCategoryDefinitionsCacheTime);
+        return categoryDefinitions;
+    }
+
+    public async Task<IReadOnlyDictionary<int, CategoryDefinition>> GetFlattenedCategoryDefinitionsAsync(string categoryType)
+    {
+        string GetCacheKey() => $"flatCategoryDefinitions:{categoryType}";
+
+        static void AddCategoriesRecursive(Dictionary<int, CategoryDefinition> dict, CategoryDefinition categoryDefinition)
+        {
+            if (!dict.TryAdd(categoryDefinition.Id, categoryDefinition))
+                throw new FormatException("Duplicate category IDs were returned by Gamebanana APIs.");
+
+            if (categoryDefinition.Children is not { Count: > 0 })
+                return;
+
+            foreach (CategoryDefinition childCategoryDefinition in categoryDefinition.Children)
+                AddCategoriesRecursive(dict, childCategoryDefinition);
+        }
+
+        if (_cache.TryGetValue(GetCacheKey(), out object? cachedVal)
+            && cachedVal is IReadOnlyDictionary<int, CategoryDefinition> cachedCategoryDefinitions)
+            return cachedCategoryDefinitions;
+
+        List<CategoryDefinition> categoryDefinitions = await Gamebanana.Category.GetCategoryDefinitionsAsync(categoryType, DeadlockGameId);
+        Dictionary<int, CategoryDefinition> flatCategoryDefinitions = [];
+
+        foreach (CategoryDefinition categoryDefinition in categoryDefinitions)
+            AddCategoriesRecursive(flatCategoryDefinitions, categoryDefinition);
+
+        _cache.Set(GetCacheKey(), flatCategoryDefinitions, s_flatCategoryDefinitionsCacheTime);
+        return flatCategoryDefinitions;
+    }
 
     public async Task<SubmissionProfile> GetSubmissionAsync(int id, string type)
     {
