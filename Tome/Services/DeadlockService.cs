@@ -15,6 +15,15 @@ public sealed class DeadlockService(FileService fileService)
 
     private readonly FileService _fileService = fileService;
 
+    public Process? LaunchDeadlock()
+    {
+        return Process.Start(new ProcessStartInfo
+        {
+            FileName = $"steam://rungameid/{DeadlockAppId}",
+            UseShellExecute = true
+        });
+    }
+
     public string GetAddonsPath(string basePath)
     {
         string directory = Path.Combine(basePath, "game\\citadel\\addons");
@@ -28,7 +37,7 @@ public sealed class DeadlockService(FileService fileService)
         string file = Path.Combine(path, "game\\citadel\\gameinfo.gi");
 
         string saveDirectory = _fileService.GetSaveDirectory();
-        string backupPath = Path.Combine(saveDirectory, GameInfoBackup);
+        string backupPath = Path.Combine(saveDirectory, CryptographyUtil.Md5(path), GameInfoBackup);
         bool isFreshBackup = false;
 
         if (!File.Exists(backupPath))

@@ -135,10 +135,20 @@ public sealed partial class MainWindow : Window
 
     private void GitHub_Click(object sender, RoutedEventArgs e)
     {
-        Process.Start(new ProcessStartInfo
+        using Process? _ = Process.Start(new ProcessStartInfo
         {
             FileName = "https://github.com/Uralstech/Tome",
             UseShellExecute = true
         });
+    }
+
+    private void LaunchDeadlock_Click(object sender, RoutedEventArgs e)
+    {
+        using Process? proc = _deadlock.LaunchDeadlock();
+        if (proc is null)
+        {
+            MessageBox.Show("Could not start Deadlock.");
+            return;
+        }
     }
 }

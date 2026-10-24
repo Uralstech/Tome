@@ -22,8 +22,9 @@
                   Background="Transparent"
                   WindowChrome.IsHitTestVisibleInChrome="True">
 
-                    <MenuItem Header="_File">
+                    <MenuItem Header="_Game">
                         <MenuItem Header="Game Path"/>
+                        <MenuItem Header="Launch Deadlock" Click="LaunchDeadlock_Click"/>
                         <MenuItem Header="Default Filters"/>
                     </MenuItem>
 

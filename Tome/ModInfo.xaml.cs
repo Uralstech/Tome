@@ -47,7 +47,7 @@ public sealed partial class ModInfo : Window
 
     private void AuthorLink_Click(object sender, RoutedEventArgs e)
     {
-        Process.Start(new ProcessStartInfo
+        using Process? _ = Process.Start(new ProcessStartInfo
         {
             FileName = _profile.Author.ProfileUrl,
             UseShellExecute = true
@@ -59,7 +59,7 @@ public sealed partial class ModInfo : Window
         if (_profile.Studio is not SubmissionAuthor studio)
             return;
 
-        Process.Start(new ProcessStartInfo
+        using Process? _ = Process.Start(new ProcessStartInfo
         {
             FileName = studio.ProfileUrl,
             UseShellExecute = true
@@ -68,7 +68,7 @@ public sealed partial class ModInfo : Window
 
     private void ProfileLink_Click(object sender, RoutedEventArgs e)
     {
-        Process.Start(new ProcessStartInfo
+        using Process? _ = Process.Start(new ProcessStartInfo
         {
             FileName = _profile.ProfileUrl,
             UseShellExecute = true
