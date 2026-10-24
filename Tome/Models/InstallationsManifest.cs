@@ -32,9 +32,9 @@ public sealed class InstallationsManifest
 /// <summary>Entry for an installed mod.</summary>
 public sealed class InstalledMod
 {
-    /// <summary>Path to the vpk file.</summary>
-    [JsonPropertyName("path")]
-    public required string Path { get; set; }
+    /// <summary>Relative path to the vpk file from the 'Deadlock\game\citadel\addons' directory.</summary>
+    [JsonPropertyName("relativePath")]
+    public required string RelativePath { get; set; }
 
     /// <summary>The original MD5 file checksum.</summary>
     [JsonPropertyName("originalFileMd5Checksum")]

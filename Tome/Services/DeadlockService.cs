@@ -44,16 +44,17 @@ public sealed class DeadlockService(FileService fileService)
         using (FileStream zipToOpen = new(backupZip, FileMode.Create))
         using (ZipArchive archive = new(zipToOpen, ZipArchiveMode.Create))
         {
-            HashSet<string> problematicModPaths = new(failures.ProblematicMods.Keys);
-            foreach (string problematicMod in problematicModPaths)
+            HashSet<string> problematicModPathsRelative = [.. failures.ProblematicMods.Keys];
+            foreach (string problematicModPathRelative in problematicModPathsRelative)
             {
-                if (!File.Exists(problematicMod))
+                string absoluteModPath = Path.Combine(addons, problematicModPathRelative);
+                if (!File.Exists(absoluteModPath))
                     continue;
 
-                string modFileName = Path.GetFileName(problematicMod);
+                string modFileName = Path.GetFileName(absoluteModPath);
                 string modPathInZip = Path.Combine("addons", modFileName);
-                archive.CreateEntryFromFile(problematicMod, modPathInZip);
-                filesToDelete.Add(problematicMod);
+                archive.CreateEntryFromFile(absoluteModPath, modPathInZip);
+                filesToDelete.Add(absoluteModPath);
             }
 
             IEnumerable<List<InstalledMod>> allModsLists = manifest.Skins.Values.Concat(
@@ -61,7 +62,7 @@ public sealed class DeadlockService(FileService fileService)
             ).Append(manifest.Misc);
 
             foreach (List<InstalledMod> modsList in allModsLists)
-                modsList.RemoveAll(mod => problematicModPaths.Contains(mod.Path));
+                modsList.RemoveAll(mod => problematicModPathsRelative.Contains(mod.RelativePath));
         }
 
         foreach (string fileToDelete in filesToDelete)
@@ -82,35 +83,31 @@ public sealed class DeadlockService(FileService fileService)
 
         Uri baseUri = new(safeAddonsPath);
 
-        HashSet<string> allModPaths = [];
+        HashSet<string> allModPathsRelative = [];
         Dictionary<string, string> problematicMods = [];
         foreach (InstalledMod mod in allMods)
         {
-            allModPaths.Add(mod.Path);
+            allModPathsRelative.Add(mod.RelativePath);
 
-            if (!baseUri.IsBaseOf(new Uri(mod.Path)))
+            string absoluteModPath = Path.Combine(safeAddonsPath, mod.RelativePath);
+            if (!File.Exists(absoluteModPath))
             {
-                problematicMods.TryAdd(mod.Path, $"'{mod.ListingMetadata?.Name ?? mod.Path}' is located outside {safeAddonsPath}");
+                problematicMods.TryAdd(mod.RelativePath, $"'{mod.ListingMetadata?.Name ?? ""}' is missing at path: {absoluteModPath}");
                 continue;
             }
 
-            if (!File.Exists(mod.Path))
+            if (CryptographyUtil.Md5File(absoluteModPath) != mod.OriginalFileMd5Checksum)
             {
-                problematicMods.TryAdd(mod.Path, $"'{mod.ListingMetadata?.Name ?? ""}' is missing at path: {mod.Path}");
-                continue;
-            }
-
-            if (CryptographyUtil.Md5File(mod.Path) != mod.OriginalFileMd5Checksum)
-            {
-                problematicMods.TryAdd(mod.Path, $"'{mod.ListingMetadata?.Name ?? mod.Path}' does not match original checksum");
+                problematicMods.TryAdd(mod.RelativePath, $"'{mod.ListingMetadata?.Name ?? mod.RelativePath}' does not match original checksum");
                 continue;
             }
         }
 
-        foreach (string path in Directory.EnumerateFiles(safeAddonsPath))
+        foreach (string absolutePath in Directory.EnumerateFiles(safeAddonsPath))
         {
-            if (!allModPaths.Contains(path))
-                problematicMods.TryAdd(path, $"Unknown/unregistered mod at path: {path}");
+            string relativePath = Path.GetRelativePath(safeAddonsPath, absolutePath);
+            if (!allModPathsRelative.Contains(relativePath))
+                problematicMods.TryAdd(relativePath, $"Unknown/unregistered mod at path: {absolutePath}");
         }
 
         if (problematicMods.Count > 0)
