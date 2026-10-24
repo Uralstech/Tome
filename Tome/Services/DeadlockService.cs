@@ -107,7 +107,7 @@ public sealed class DeadlockService(FileService fileService)
             }
         }
 
-        foreach (string path in Directory.EnumerateFiles(manifest.GamePath))
+        foreach (string path in Directory.EnumerateFiles(safeAddonsPath))
         {
             if (!allModPaths.Contains(path))
                 problematicMods.TryAdd(path, $"Unknown/unregistered mod at path: {path}");

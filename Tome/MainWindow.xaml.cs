@@ -19,7 +19,7 @@ public sealed partial class MainWindow : Window
     private readonly GamebananaService _gamebanana;
 
     private readonly ObservableCollection<ListedMod> _mods = [];
-    private InstallationsManifest? _installations = null;
+    private InstallationsManifest _installations = null!;
     private ToggleButton? _currentChecked = null;
 
     public MainWindow(FileService files, DeadlockService deadlock, GamebananaService gamebanana)
@@ -39,13 +39,13 @@ public sealed partial class MainWindow : Window
         base.OnClosed(e);
     }
 
-    private void InitializeManifest()
+    private bool InitializeManifest()
     {
         if (_files.TryGetManifest(out InstallationsManifest? manifest)
             && _deadlock.VerifyDeadlockInstallation(manifest.GamePath))
         {
             _installations = manifest;
-            return;
+            return true;
         }
 
         if (!_deadlock.TryGetDeadlockPath(out string? deadlockPath)
@@ -58,7 +58,7 @@ public sealed partial class MainWindow : Window
             {
                 MessageBox.Show(this, "The provided path could not be verified.", "Invalid path", MessageBoxButton.OK, MessageBoxImage.Error);
                 Application.Current.Shutdown();
-                return;
+                return false;
             }
         }
         else
@@ -73,11 +73,12 @@ public sealed partial class MainWindow : Window
 
         _files.SaveManifest(manifest);
         _installations = manifest;
+        return true;
     }
 
     private void VerifyManifest()
     {
-        if (_deadlock.VerifyManifest(_installations!, out ManifestVerificationFailures? failures))
+        if (_deadlock.VerifyManifest(_installations, out ManifestVerificationFailures? failures))
             return;
 
         MessageBoxResult result = MessageBox.Show(this, $"Multiple warnings while verifying mod list:\n- {string.Join("\n- ", failures.ProblematicMods.Values)}" +
@@ -109,7 +110,7 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            _deadlock.ClearManifestFailures(_installations!, failures, dialog.FileName);
+            _deadlock.ClearManifestFailures(_installations, failures, dialog.FileName);
         }
         catch (Exception ex)
         {
@@ -119,18 +120,23 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void PatchInstall()
+    private void PatchInstall(bool isRetry = false)
     {
         try
         {
-            _deadlock.PatchDeadlockGameInfo(_installations!.GamePath, out bool corruptWithBackup);
+            _deadlock.PatchDeadlockGameInfo(_installations.GamePath, out bool corruptWithBackup);
             if (!corruptWithBackup)
                 return;
 
+            if (isRetry)
+            {
+                MessageBox.Show(this, "Please check if Tome has updates or raise this as an issue on GitHub.", "Patch failed",
+                                      MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
             MessageBoxResult result = MessageBox.Show(this, "Your Deadlock installation's gameinfo.gi file may be corrupted. " +
-                                                            "Restore to a previous version and try patching again? " +
-                                                            "If this happens frequently, Tome may need an update. " +
-                                                            "Otherwise, raise an issue on Github.", "Could not patch Deadlock",
+                                                            "Restore to a previous version and try patching again?", "Could not patch Deadlock",
                                                             MessageBoxButton.YesNo, MessageBoxImage.Error, MessageBoxResult.Yes);
 
             if (result != MessageBoxResult.Yes)
@@ -140,7 +146,7 @@ public sealed partial class MainWindow : Window
             MessageBox.Show(this, "gameinfo.gi was restored from a backup. Patching again...", "gameinfo.gi restored",
                                   MessageBoxButton.OK, MessageBoxImage.Information);
 
-            PatchInstall();
+            PatchInstall(isRetry: true);
         }
         catch (Exception ex)
         {
@@ -223,7 +229,9 @@ public sealed partial class MainWindow : Window
 
     private void Window_ContentRendered(object sender, EventArgs e)
     {
-        InitializeManifest();
+        if (!InitializeManifest())
+            return;
+
         PatchInstall();
         VerifyManifest();
 
