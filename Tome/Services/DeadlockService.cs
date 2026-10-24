@@ -15,6 +15,13 @@ public sealed class DeadlockService(FileService fileService)
 
     private readonly FileService _fileService = fileService;
 
+    public string GetAddonsPath(string basePath)
+    {
+        string directory = Path.Combine(basePath, "game\\citadel\\addons");
+        Directory.CreateDirectory(directory);
+        return directory;
+    }
+
     public void PatchDeadlockGameInfo(string path, out bool corruptWithBackup)
     {
         corruptWithBackup = false;
@@ -31,97 +38,108 @@ public sealed class DeadlockService(FileService fileService)
             isFreshBackup = true;
         }
 
-        KVDocument document;
-        using (FileStream input = File.OpenRead(file))
-            document = s_kv1Serializer.Deserialize(input);
-
-        KeyValuePair<string, KVObject>[] searchPaths = [.. document["FileSystem"]["SearchPaths"]];
-        int searchPathCount = searchPaths.Length;
-
-        const string ExceptionMessage = "citadel\\gameinfo.gi is an unexpected format and may be corrupt. " +
-                                         "Please verify Deadlock's integrity through Steam. If that does not " +
-                                         "fix this warning, you may have to update Tome.";
-
-        bool isValid = searchPathCount > 0;
-
-        KVObject searchPathsCopy = KVObject.ListCollection(searchPathCount);
-        Dictionary<string, int> citadelEntries = new(3);
-        Dictionary<string, int> coreEntries = new(3);
-        int addonsIndex = -1;
-
-        for (int i = 0; i < searchPathCount; i++)
+        try
         {
-            (string key, KVObject value) = searchPaths[i];
-            string valueStr = value.ToString();
+            KVDocument document;
+            using (FileStream input = File.OpenRead(file))
+                document = s_kv1Serializer.Deserialize(input);
 
-            if (valueStr is "citadel/addons")
+            KeyValuePair<string, KVObject>[] searchPaths = [.. document["FileSystem"]["SearchPaths"]];
+            int searchPathCount = searchPaths.Length;
+
+            const string ExceptionMessage = "citadel\\gameinfo.gi is an unexpected format and may be corrupt. " +
+                                             "Please verify Deadlock's integrity through Steam. If that does not " +
+                                             "fix this warning, you may have to update Tome.";
+
+            bool isValid = searchPathCount > 0;
+
+            KVObject searchPathsCopy = KVObject.ListCollection(searchPathCount);
+            Dictionary<string, int> citadelEntries = new(3);
+            Dictionary<string, int> coreEntries = new(3);
+            int addonsIndex = -1;
+
+            for (int i = 0; i < searchPathCount; i++)
             {
-                if (addonsIndex is >= 0 || key is not "Game"
-                    || citadelEntries.Count > 0 || coreEntries.Count > 0)
+                (string key, KVObject value) = searchPaths[i];
+                string valueStr = value.ToString();
+
+                if (valueStr is "citadel/addons")
                 {
+                    if (addonsIndex is >= 0 || key is not "Game"
+                        || citadelEntries.Count > 0 || coreEntries.Count > 0)
+                    {
+                        isValid = false;
+                        break;
+                    }
+
+                    addonsIndex = i;
+                    continue;
+                }
+
+                if (valueStr is "citadel")
+                {
+                    if (key is "Game" or "Mod" or "Write"
+                        && citadelEntries.TryAdd(key, i)
+                        && citadelEntries.Count <= 3)
+                        continue;
+
                     isValid = false;
                     break;
                 }
 
-                addonsIndex = i;
-                continue;
+                if (valueStr is "core")
+                {
+                    if (key is "Game" or "Mod" or "Write"
+                        && coreEntries.TryAdd(key, i)
+                        && coreEntries.Count <= 3)
+                        continue;
+
+                    isValid = false;
+                    break;
+                }
+
+                searchPathsCopy.Add(key, value);
             }
 
-            if (valueStr is "citadel")
+            if (!isValid)
             {
-                if (key is "Game" or "Mod" or "Write"
-                    && citadelEntries.TryAdd(key, i)
-                    && citadelEntries.Count <= 3)
-                    continue;
+                if (isFreshBackup)
+                    throw new FormatException(ExceptionMessage);
 
-                isValid = false;
-                break;
+                corruptWithBackup = true;
+                return;
             }
 
-            if (valueStr is "core")
+            searchPathsCopy.Add("Game", "citadel/addons");
+            searchPathsCopy.Add("Mod", "citadel");
+            searchPathsCopy.Add("Write", "citadel");
+            searchPathsCopy.Add("Game", "citadel");
+            searchPathsCopy.Add("Mod", "core");
+            searchPathsCopy.Add("Write", "core");
+            searchPathsCopy.Add("Game", "core");
+
+            if (citadelEntries.Count == 3
+                && coreEntries.Count == 3
+                && addonsIndex >= 0)
             {
-                if (key is "Game" or "Mod" or "Write"
-                    && coreEntries.TryAdd(key, i)
-                    && coreEntries.Count <= 3)
-                    continue;
-
-                isValid = false;
-                break;
+                Debug.WriteLine("gameinfo.gi is already patched.");
+                return;
             }
 
-            searchPathsCopy.Add(key, value);
+            document["FileSystem"]["SearchPaths"] = searchPathsCopy;
+            using (FileStream output = File.Create(file))
+                s_kv1Serializer.Serialize(output, document);
+
+            Debug.WriteLine("gameinfo.gi successfully patched.");
         }
-
-        if (!isValid)
+        catch (Exception ex)
         {
+            Debug.WriteLine($"Exception while getting Deadlock path: {ex}");
             if (isFreshBackup)
-                throw new FormatException(ExceptionMessage);
+                throw;
 
             corruptWithBackup = true;
-            return;
         }
-
-        searchPathsCopy.Add("Game",     "citadel/addons");
-        searchPathsCopy.Add("Mod",      "citadel");
-        searchPathsCopy.Add("Write",    "citadel");
-        searchPathsCopy.Add("Game",     "citadel");
-        searchPathsCopy.Add("Mod",      "core");
-        searchPathsCopy.Add("Write",    "core");
-        searchPathsCopy.Add("Game",     "core");
-
-        if (citadelEntries.Count == 3
-            && coreEntries.Count == 3
-            && addonsIndex >= 0)
-        {
-            Debug.WriteLine("gameinfo.gi is already patched.");
-            return;
-        }
-
-        document["FileSystem"]["SearchPaths"] = searchPathsCopy;
-        using (FileStream output = File.Create(file))
-            s_kv1Serializer.Serialize(output, document);
-
-        Debug.WriteLine("gameinfo.gi successfully patched.");
     }
 
     public bool VerifyDeadlockInstallation(string path)
@@ -145,7 +163,7 @@ public sealed class DeadlockService(FileService fileService)
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Exception while verifying Deadlock: {ex}");
+            Debug.WriteLine($"Exception while verifying Deadlock: {ex}");
             return false;
         }
     }
@@ -204,7 +222,7 @@ public sealed class DeadlockService(FileService fileService)
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Exception while getting Deadlock path: {ex}");
+            Debug.WriteLine($"Exception while getting Deadlock path: {ex}");
         }
 
         return false;

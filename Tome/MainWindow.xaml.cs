@@ -12,15 +12,18 @@ namespace Tome;
 public sealed partial class MainWindow : Window
 {
     private readonly SemaphoreSlim _getSemaphore = new(1, 1);
+
+    private readonly DeadlockService _deadlock;
     private readonly GamebananaService _gamebanana;
 
     private readonly ObservableCollection<ListedMod> _mods = [];
     private ToggleButton? _currentChecked = null;
 
-    public MainWindow(GamebananaService gamebanana)
+    public MainWindow(DeadlockService deadlock, GamebananaService gamebanana)
     {
         InitializeComponent();
 
+        _deadlock = deadlock;
         _gamebanana = gamebanana;
         ModsGrid.ItemsSource = _mods;
     }
