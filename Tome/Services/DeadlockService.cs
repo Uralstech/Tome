@@ -2,6 +2,8 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.IO.Compression;
+using Tome.Models;
 using ValveKeyValue;
 
 namespace Tome.Services;
@@ -31,10 +33,64 @@ public sealed class DeadlockService(FileService fileService)
         return directory;
     }
 
+    public string GetGameInfoPath(string basePath) =>
+        Path.Combine(basePath, "game\\citadel\\gameinfo.gi");
+
+    public void ClearAllMods(InstallationsManifest manifest, string backupZip)
+    {
+        string addons = GetAddonsPath(manifest.GamePath);
+
+        if (Directory.EnumerateFileSystemEntries(addons).Any())
+            ZipFile.CreateFromDirectory(addons, backupZip);
+
+        manifest.Skins.Clear();
+        manifest.ModelReplacements.Clear();
+        manifest.Misc.Clear();
+
+        _fileService.SaveManifest(manifest);
+        Directory.Delete(addons, true);
+    }
+
+    public bool VerifyManifest(InstallationsManifest manifest, out IReadOnlyList<string> warnings)
+    {
+        IEnumerable<InstalledMod> allMods = manifest.Skins.Values.Concat(
+            manifest.ModelReplacements.Values
+        ).Append(manifest.Misc).SelectMany(static mod => mod);
+
+        List<string> warningsList = [];
+        warnings = warningsList;
+
+        foreach (InstalledMod mod in allMods)
+        {
+            if (!File.Exists(mod.Path))
+            {
+                warningsList.Add($"Mod '{mod.ListingMetadata?.Name ?? ""}' missing at path: {mod.Path}");
+                continue;
+            }
+
+            if (CryptographyUtil.Md5File(mod.Path) != mod.OriginalFileMd5Checksum)
+            {
+                warningsList.Add($"Mod '{mod.ListingMetadata?.Name ?? ""}' does not match original checksum and may be corrupt.");
+                continue;
+            }
+        }
+
+        return warningsList.Count == 0;
+    }
+
+    public void RestoreGameInfo(string path)
+    {
+        string file = GetGameInfoPath(path);
+        string saveDirectory = _fileService.GetSaveDirectory();
+        string backupPath = Path.Combine(saveDirectory, CryptographyUtil.Md5(path.TrimEnd('/', '\\')), GameInfoBackup);
+
+        File.Copy(backupPath, file, true);
+    }
+
     public void PatchDeadlockGameInfo(string path, out bool corruptWithBackup)
     {
         corruptWithBackup = false;
-        string file = Path.Combine(path, "game\\citadel\\gameinfo.gi");
+        string file = GetGameInfoPath(path);
 
         string saveDirectory = _fileService.GetSaveDirectory();
         string backupPath = Path.Combine(saveDirectory, CryptographyUtil.Md5(path.TrimEnd('/', '\\')), GameInfoBackup);
@@ -161,7 +217,7 @@ public sealed class DeadlockService(FileService fileService)
             if (!Directory.Exists(path))
                 return false;
 
-            string file = Path.Combine(path, "game\\citadel\\gameinfo.gi");
+            string file = GetGameInfoPath(path);
             if (!File.Exists(file))
                 return false;
 

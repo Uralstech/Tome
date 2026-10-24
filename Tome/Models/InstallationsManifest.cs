@@ -36,41 +36,48 @@ public sealed class InstalledMod
     [JsonPropertyName("path")]
     public required string Path { get; set; }
 
-    /// <summary>The Gamebanana submission ID.</summary>
-    [JsonPropertyName("originalModId")]
-    public required int OriginalModId { get; set; }
-
-    /// <summary>The Gamebanana submission type (Mod/Sound).</summary>
-    [JsonPropertyName("originalModType")]
-    public required int OriginalModType { get; set; }
-
-    /// <summary>The Gamebanana submission category.</summary>
-    [JsonPropertyName("originalModCategoryType")]
-    public required string OriginalModCategoryType { get; set; }
-
-    /// <summary>The full Gamebanana submission category (ID) tree.</summary>
-    [JsonPropertyName("originalModCategoryTree")]
-    public required IReadOnlyList<int> OriginalModCategoryTree { get; set; }
-
-    /// <summary>The Gamebanana file ID.</summary>
-    [JsonPropertyName("originalFileId")]
-    public required int OriginalFileId { get; set; }
-
-    /// <summary>The original file name from Gamebanana.</summary>
-    [JsonPropertyName("originalFileName")]
-    public required string OriginalFileName { get; set; }
-
-    /// <summary>The original MD5 file checksum from Gamebanana.</summary>
+    /// <summary>The original MD5 file checksum.</summary>
     [JsonPropertyName("originalFileMd5Checksum")]
     public required string OriginalFileMd5Checksum { get; set; } = null!;
 
-    /// <summary>The date the file was uploaded to Gamebanana.</summary>
-    [JsonPropertyName("originalFileUploadDate")]
-    public required DateTime OriginalFileUploadDate { get; set; }
+    /// <summary>Gamebanana submission metadata. If <see langword="null"/>, this is a local mod.</summary>
+    [JsonPropertyName("gamebananaMetadata")]
+    public GamebananaMetadata? GamebananaMetadata { get; set; }
 
     /// <summary>Optional metadata that may be displayed in Tome's GUI.</summary>
     [JsonPropertyName("listingMetadata")]
     public ListingMetadata? ListingMetadata { get; set; }
+}
+
+public sealed class GamebananaMetadata
+{
+    /// <summary>The Gamebanana submission ID.</summary>
+    [JsonPropertyName("submissionId")]
+    public required int SubmissionId { get; set; }
+
+    /// <summary>The Gamebanana submission type (Mod/Sound).</summary>
+    [JsonPropertyName("submissionType")]
+    public required int SubmissionType { get; set; }
+
+    /// <summary>The Gamebanana submission category.</summary>
+    [JsonPropertyName("submissionCategoryType")]
+    public required string SubmissionCategoryType { get; set; }
+
+    /// <summary>The full Gamebanana submission category (ID) tree.</summary>
+    [JsonPropertyName("submissionCategoryTree")]
+    public required IReadOnlyList<int> SubmissionCategoryTree { get; set; }
+
+    /// <summary>The Gamebanana file ID.</summary>
+    [JsonPropertyName("fileId")]
+    public required int FileId { get; set; }
+
+    /// <summary>The original file name from Gamebanana.</summary>
+    [JsonPropertyName("fileName")]
+    public required string FileName { get; set; }
+
+    /// <summary>The date the file was uploaded to Gamebanana.</summary>
+    [JsonPropertyName("fileUploadDate")]
+    public required DateTime FileUploadDate { get; set; }
 }
 
 /// <summary>Optional mod metadata that may be displayed in Tome's GUI.</summary>

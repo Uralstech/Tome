@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography;
+﻿using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace Tome.Services;
@@ -17,6 +18,13 @@ internal static class CryptographyUtil
         Span<byte> hash = stackalloc byte[MD5.HashSizeInBytes];
         MD5.HashData(utf8, hash);
 
-        return Convert.ToHexString(hash);
+        return Convert.ToHexStringLower(hash);
+    }
+
+    public static string Md5File(string path)
+    {
+        using FileStream stream = File.OpenRead(path);
+        byte[] hashed = MD5.HashData(stream);
+        return Convert.ToHexStringLower(hashed);
     }
 }
