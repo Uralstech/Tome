@@ -12,6 +12,8 @@ public sealed partial class App : Application
     {
         ServiceCollection services = new();
         services.AddSingleton<GamebananaService>();
+        services.AddSingleton<FileService>();
+        services.AddSingleton<DeadlockService>();
         services.AddSingleton<MainWindow>();
 
         Services = services.BuildServiceProvider();
