@@ -36,29 +36,45 @@ public sealed class DeadlockService(FileService fileService)
     public string GetGameInfoPath(string basePath) =>
         Path.Combine(basePath, "game\\citadel\\gameinfo.gi");
 
-    public void ClearAllMods(InstallationsManifest manifest, string backupZip)
+    public void ClearManifestFailures(InstallationsManifest manifest, ManifestVerificationFailures failures, string backupZip)
     {
         string addons = GetAddonsPath(manifest.GamePath);
+        HashSet<string> filesToDelete = [];
 
-        if (Directory.EnumerateFileSystemEntries(addons).Any())
-            ZipFile.CreateFromDirectory(addons, backupZip);
+        using (FileStream zipToOpen = new(backupZip, FileMode.Create))
+        using (ZipArchive archive = new(zipToOpen, ZipArchiveMode.Create))
+        {
+            HashSet<string> problematicModPaths = new(failures.ProblematicMods.Keys);
+            foreach (string problematicMod in problematicModPaths)
+            {
+                if (!File.Exists(problematicMod))
+                    continue;
 
-        manifest.Skins.Clear();
-        manifest.ModelReplacements.Clear();
-        manifest.Misc.Clear();
+                string modFileName = Path.GetFileName(problematicMod);
+                string modPathInZip = Path.Combine("addons", modFileName);
+                archive.CreateEntryFromFile(problematicMod, modPathInZip);
+                filesToDelete.Add(problematicMod);
+            }
+
+            IEnumerable<List<InstalledMod>> allModsLists = manifest.Skins.Values.Concat(
+                manifest.ModelReplacements.Values
+            ).Append(manifest.Misc);
+
+            foreach (List<InstalledMod> modsList in allModsLists)
+                modsList.RemoveAll(mod => problematicModPaths.Contains(mod.Path));
+        }
+
+        foreach (string fileToDelete in filesToDelete)
+            File.Delete(fileToDelete);
 
         _fileService.SaveManifest(manifest);
-        Directory.Delete(addons, true);
     }
 
-    public bool VerifyManifest(InstallationsManifest manifest, out IReadOnlyList<string> warnings)
+    public bool VerifyManifest(InstallationsManifest manifest, [NotNullWhen(false)] out ManifestVerificationFailures? failures)
     {
         IEnumerable<InstalledMod> allMods = manifest.Skins.Values.Concat(
             manifest.ModelReplacements.Values
         ).Append(manifest.Misc).SelectMany(static mod => mod);
-
-        List<string> warningsList = [];
-        warnings = warningsList;
 
         string safeAddonsPath = GetAddonsPath(manifest.GamePath);
         if (!Path.EndsInDirectorySeparator(safeAddonsPath))
@@ -66,28 +82,49 @@ public sealed class DeadlockService(FileService fileService)
 
         Uri baseUri = new(safeAddonsPath);
 
+        HashSet<string> allModPaths = [];
+        Dictionary<string, string> problematicMods = [];
         foreach (InstalledMod mod in allMods)
         {
+            allModPaths.Add(mod.Path);
+
             if (!baseUri.IsBaseOf(new Uri(mod.Path)))
             {
-                warningsList.Add($"Mod '{mod.ListingMetadata?.Name ?? ""}' is located at an unexpected directory relative to {safeAddonsPath}");
+                problematicMods.TryAdd(mod.Path, $"'{mod.ListingMetadata?.Name ?? mod.Path}' is located outside {safeAddonsPath}");
                 continue;
             }
 
             if (!File.Exists(mod.Path))
             {
-                warningsList.Add($"Mod '{mod.ListingMetadata?.Name ?? ""}' missing at path: {mod.Path}");
+                problematicMods.TryAdd(mod.Path, $"'{mod.ListingMetadata?.Name ?? ""}' is missing at path: {mod.Path}");
                 continue;
             }
 
             if (CryptographyUtil.Md5File(mod.Path) != mod.OriginalFileMd5Checksum)
             {
-                warningsList.Add($"Mod '{mod.ListingMetadata?.Name ?? ""}' does not match original checksum and may be corrupt");
+                problematicMods.TryAdd(mod.Path, $"'{mod.ListingMetadata?.Name ?? mod.Path}' does not match original checksum");
                 continue;
             }
         }
 
-        return warningsList.Count == 0;
+        foreach (string path in Directory.EnumerateFiles(manifest.GamePath))
+        {
+            if (!allModPaths.Contains(path))
+                problematicMods.TryAdd(path, $"Unknown/unregistered mod at path: {path}");
+        }
+
+        if (problematicMods.Count > 0)
+        {
+            failures = new ManifestVerificationFailures()
+            {
+                ProblematicMods = problematicMods
+            };
+
+            return false;
+        }
+
+        failures = null;
+        return true;
     }
 
     public void RestoreGameInfo(string path)
@@ -257,7 +294,7 @@ public sealed class DeadlockService(FileService fileService)
             // https://github.com/WilliamVenner/steamlocate-rs/blob/master/src/locate/windows.rs
             string? steamPath = (Registry.GetValue("HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\Valve\\Steam", "InstallPath", null)
                                  ?? Registry.GetValue("HKEY_LOCAL_MACHINE\\SOFTWARE\\Valve\\Steam", "InstallPath", null)
-                                 ?? Registry.GetValue("HKEY_CURRENT_USER\\Software\\Valve\\Steam", "InstallPath", null)) as string;
+                                 ?? Registry.GetValue("HKEY_CURRENT_USER\\Software\\Valve\\Steam", "SteamPath", null)) as string;
 
             if (!Directory.Exists(steamPath))
                 return false;

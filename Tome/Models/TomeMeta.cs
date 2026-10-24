@@ -6,7 +6,7 @@ namespace Tome.Models;
 [JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization | JsonSourceGenerationMode.Metadata)]
 internal sealed partial class TomeMetaJsonContext : JsonSerializerContext;
 
-internal sealed class TomeMeta
+public sealed class TomeMeta
 {
     [JsonPropertyName("lastUpdatedBy")]
     public required int LastUpdatedBy { get; set; }

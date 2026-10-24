@@ -77,17 +77,16 @@ public sealed partial class MainWindow : Window
 
     private void VerifyManifest()
     {
-        if (_deadlock.VerifyManifest(_installations!, out IReadOnlyList<string>? warnings))
+        if (_deadlock.VerifyManifest(_installations!, out ManifestVerificationFailures? failures))
             return;
 
-        MessageBoxResult result = MessageBox.Show(this, $"Multiple warnings while verifying mod list:\n- {string.Join("\n- ", warnings)}" +
-                                                        $"\nThis may cause incorrect mod loading and create conflicts. Clear all existing mods?",
+        MessageBoxResult result = MessageBox.Show(this, $"Multiple warnings while verifying mod list:\n- {string.Join("\n- ", failures.ProblematicMods.Values)}" +
+                                                        $"\nThis may cause incorrect mod loading and create conflicts. Delete all problematic mods?",
                                                         "Failed mod list verification", MessageBoxButton.YesNo, MessageBoxImage.Error);
 
         if (result == MessageBoxResult.Yes)
-            result = MessageBox.Show(this, "All mods installed with your Deadlock installation will be deleted. " +
-                                           "Your addons/ directory containing the mods will be backed up to a folder of your choice. " +
-                                           "Continue?", "Are you sure?", MessageBoxButton.YesNo, MessageBoxImage.Stop);
+            result = MessageBox.Show(this, "All problematic mods installed with your Deadlock installation will be deleted, " +
+                                           "after being backed up. Continue?", "Are you sure?", MessageBoxButton.YesNo, MessageBoxImage.Stop);
 
         if (result != MessageBoxResult.Yes)
             return;
@@ -103,14 +102,14 @@ public sealed partial class MainWindow : Window
 
         if (dialog.ShowDialog() != true)
         {
-            MessageBox.Show("Your files were not deleted as the operation was cancelled.",
+            MessageBox.Show("Your mods were not deleted as the operation was cancelled.",
                             "Operation cancelled", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
         try
         {
-            _deadlock.ClearAllMods(_installations!, dialog.FileName);
+            _deadlock.ClearManifestFailures(_installations!, failures, dialog.FileName);
         }
         catch (Exception ex)
         {
