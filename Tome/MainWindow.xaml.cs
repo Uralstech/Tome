@@ -1,4 +1,5 @@
 ﻿using GamebananaAPI.Data.Submission;
+using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Windows;
@@ -13,16 +14,19 @@ public sealed partial class MainWindow : Window
 {
     private readonly SemaphoreSlim _getSemaphore = new(1, 1);
 
+    private readonly FileService _files;
     private readonly DeadlockService _deadlock;
     private readonly GamebananaService _gamebanana;
 
     private readonly ObservableCollection<ListedMod> _mods = [];
+    private InstallationsManifest _installations = null!;
     private ToggleButton? _currentChecked = null;
 
-    public MainWindow(DeadlockService deadlock, GamebananaService gamebanana)
+    public MainWindow(FileService files, DeadlockService deadlock, GamebananaService gamebanana)
     {
         InitializeComponent();
 
+        _files = files;
         _deadlock = deadlock;
         _gamebanana = gamebanana;
         ModsGrid.ItemsSource = _mods;
@@ -33,6 +37,53 @@ public sealed partial class MainWindow : Window
         _getSemaphore.Dispose();
 
         base.OnClosed(e);
+    }
+
+    private void InitializeManifest()
+    {
+        if (_files.TryGetManifest(out InstallationsManifest? manifest))
+        {
+            _installations = manifest;
+            return;
+        }
+
+        if (!_deadlock.TryGetDeadlockPath(out string? deadlockPath)
+            || !_deadlock.VerifyDeadlockInstallation(deadlockPath))
+        {
+            MessageBox.Show("Could not find a Deadlock installation. Please select it manually.", "Could not find Deadlock", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+            deadlockPath = RequestDeadlockFolder(null);
+
+            if (!_deadlock.VerifyDeadlockInstallation(deadlockPath))
+            {
+                MessageBox.Show("The provided path could not be verified.", "Invalid path", MessageBoxButton.OK, MessageBoxImage.Error);
+                Application.Current.Shutdown();
+                return;
+            }
+        }
+        else
+        {
+            MessageBox.Show($"Deadlock successfully detected at: {deadlockPath}", "Deadlock found", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        manifest = new InstallationsManifest()
+        {
+            GamePath = deadlockPath
+        };
+
+        _files.SaveManifest(manifest);
+        _installations = manifest;
+    }
+
+    private string? RequestDeadlockFolder(string? existing)
+    {
+        OpenFolderDialog dialog = new()
+        {
+            FolderName = existing,
+            Title = "Select the Deadlock folder"
+        };
+
+        return dialog.ShowDialog() == true
+            ? dialog.FolderName : null;
     }
 
     private void SetChecked(ToggleButton? newChecked)
@@ -94,8 +145,10 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void Window_Loaded(object sender, RoutedEventArgs e)
+    private void Window_ContentRendered(object sender, EventArgs e)
     {
+        InitializeManifest();
+
         FeaturedButton.IsChecked = true;
         SetChecked(FeaturedButton);
     }

@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:Tome"
         mc:Ignorable="d"
         WindowStyle="None"
-        Loaded="Window_Loaded"
+        ContentRendered="Window_ContentRendered"
         Title="Tome: Mod Manager for Deadlock" Height="480" Width="640" Background="Beige">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="25"

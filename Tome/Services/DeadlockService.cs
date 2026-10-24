@@ -37,7 +37,7 @@ public sealed class DeadlockService(FileService fileService)
         string file = Path.Combine(path, "game\\citadel\\gameinfo.gi");
 
         string saveDirectory = _fileService.GetSaveDirectory();
-        string backupPath = Path.Combine(saveDirectory, CryptographyUtil.Md5(path), GameInfoBackup);
+        string backupPath = Path.Combine(saveDirectory, CryptographyUtil.Md5(path.TrimEnd('/', '\\')), GameInfoBackup);
         bool isFreshBackup = false;
 
         if (!File.Exists(backupPath))
@@ -154,7 +154,7 @@ public sealed class DeadlockService(FileService fileService)
         }
     }
 
-    public bool VerifyDeadlockInstallation(string path)
+    public bool VerifyDeadlockInstallation([NotNullWhen(true)] string? path)
     {
         try
         {
@@ -188,7 +188,8 @@ public sealed class DeadlockService(FileService fileService)
         {
             // https://github.com/WilliamVenner/steamlocate-rs/blob/master/src/locate/windows.rs
             string? steamPath = (Registry.GetValue("HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\Valve\\Steam", "InstallPath", null)
-                ?? Registry.GetValue("HKEY_LOCAL_MACHINE\\SOFTWARE\\Valve\\Steam", "InstallPath", null)) as string;
+                                 ?? Registry.GetValue("HKEY_LOCAL_MACHINE\\SOFTWARE\\Valve\\Steam", "InstallPath", null)
+                                 ?? Registry.GetValue("HKEY_CURRENT_USER\\Software\\Valve\\Steam", "InstallPath", null)) as string;
 
             if (!Directory.Exists(steamPath))
                 return false;

@@ -8,6 +8,6 @@ internal sealed partial class TomeMetaJsonContext : JsonSerializerContext;
 
 internal sealed class TomeMeta
 {
-    [JsonPropertyName("backupBy")]
-    public required int BackupBy { get; set; }
+    [JsonPropertyName("lastUpdatedBy")]
+    public required int LastUpdatedBy { get; set; }
 }
