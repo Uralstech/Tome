@@ -60,8 +60,20 @@ public sealed class DeadlockService(FileService fileService)
         List<string> warningsList = [];
         warnings = warningsList;
 
+        string safeAddonsPath = GetAddonsPath(manifest.GamePath);
+        if (!Path.EndsInDirectorySeparator(safeAddonsPath))
+            safeAddonsPath += Path.DirectorySeparatorChar;
+
+        Uri baseUri = new(safeAddonsPath);
+
         foreach (InstalledMod mod in allMods)
         {
+            if (!baseUri.IsBaseOf(new Uri(mod.Path)))
+            {
+                warningsList.Add($"Mod '{mod.ListingMetadata?.Name ?? ""}' is located at an unexpected directory relative to {safeAddonsPath}");
+                continue;
+            }
+
             if (!File.Exists(mod.Path))
             {
                 warningsList.Add($"Mod '{mod.ListingMetadata?.Name ?? ""}' missing at path: {mod.Path}");
@@ -70,7 +82,7 @@ public sealed class DeadlockService(FileService fileService)
 
             if (CryptographyUtil.Md5File(mod.Path) != mod.OriginalFileMd5Checksum)
             {
-                warningsList.Add($"Mod '{mod.ListingMetadata?.Name ?? ""}' does not match original checksum and may be corrupt.");
+                warningsList.Add($"Mod '{mod.ListingMetadata?.Name ?? ""}' does not match original checksum and may be corrupt");
                 continue;
             }
         }
