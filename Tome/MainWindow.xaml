@@ -24,7 +24,9 @@ limitations under the License.
         mc:Ignorable="d"
         WindowStyle="None"
         ContentRendered="Window_ContentRendered"
-        Title="Tome: Mod Manager for Deadlock" Height="480" Width="640" Background="Beige">
+        MinHeight="480" MinWidth="640"
+        Height="480" Width="640" 
+        Title="Tome: Mod Manager for Deadlock" Background="Beige">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="25"
                       ResizeBorderThickness="4"
