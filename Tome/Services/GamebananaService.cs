@@ -113,7 +113,7 @@ public sealed class GamebananaService : IDisposable
 
     #region Search/Listings
 
-    public async Task<IReadOnlyList<ListedMod>> SearchAsync(string unformattedQuery,
+    public async Task<IEnumerable<ListedMod>> SearchAsync(string unformattedQuery,
         Visibility defaultVisibility, TomeManifest manifest)
     {
         string[] parts = unformattedQuery.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
@@ -198,13 +198,15 @@ public sealed class GamebananaService : IDisposable
 
         string GetCacheKey() => $"search:{queryText}:{sort}:{includeTypes}:{excludeTypes}:{visibility}";
 
-        if (_cache.TryGetValue(GetCacheKey(), out IReadOnlyList<ListedMod>? cachedMods))
-            return cachedMods!;
+        if (!_cache.TryGetValue(GetCacheKey(), out SearchSubmissions? submissions))
+        {
+            submissions = await Gamebanana.Games.Search.SearchAsync(DeadlockGameId, queryText,
+                                sort, includeTypes, excludeTypes);
 
-        SearchSubmissions submissions = await Gamebanana.Games.Search.SearchAsync(DeadlockGameId, queryText,
-            sort, includeTypes, excludeTypes);
+            _cache.Set(GetCacheKey(), submissions, s_searchCacheTime);
+        }
 
-        ListedMod[] mods = submissions.Submissions
+        return submissions!.Submissions
             .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)visibility && sub.HasFiles)
             .Select(sub => new ListedMod()
             {
@@ -216,13 +218,10 @@ public sealed class GamebananaService : IDisposable
                 IsObsolete = sub.IsObsolete,
                 Installed = manifest.Mods.ContainsKey(sub.Id),
                 HasUpdate = false // TODO!!
-            }).ToArray();
-
-        _cache.Set(GetCacheKey(), mods, s_searchCacheTime);
-        return mods;
+            });
     }
 
-    public async Task<IReadOnlyList<ListedMod>> ParseLinkAsync(string link, TomeManifest manifest)
+    public async Task<IEnumerable<ListedMod>> ParseLinkAsync(string link, TomeManifest manifest)
     {
         if (!Uri.TryCreate(link, UriKind.Absolute, out Uri? uri))
             throw new ArgumentException("Invalid submission link.");
@@ -259,7 +258,7 @@ public sealed class GamebananaService : IDisposable
                 }];
     }
 
-    public async Task<IReadOnlyList<ListedMod>> GetTopSubmissionsAsync(Visibility defaultVisibility, TomeManifest manifest)
+    public async Task<IEnumerable<ListedMod>> GetTopSubmissionsAsync(Visibility defaultVisibility, TomeManifest manifest)
     {
         static int GetPriority(TopSubmissionPeriod group) => group switch
         {
@@ -275,11 +274,13 @@ public sealed class GamebananaService : IDisposable
 
         string GetCacheKey() => $"topSubmissions:{defaultVisibility}";
 
-        if (_cache.TryGetValue(GetCacheKey(), out IReadOnlyList<ListedMod>? cachedMods))
-            return cachedMods!;
+        if (!_cache.TryGetValue(GetCacheKey(), out IReadOnlyList<TopSubmission>? top))
+        {
+            top = await Gamebanana.Games.Search.TopSubmissionsAsync(DeadlockGameId);
+            _cache.Set(GetCacheKey(), top, s_topSubmissionsCacheTime);
+        }
 
-        List<TopSubmission> top = await Gamebanana.Games.Search.TopSubmissionsAsync(DeadlockGameId);
-        ListedMod[] mods = top
+        return top!
             .OrderBy(static sub => GetPriority(sub.Period))
             .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)defaultVisibility)
             .Select(sub => new ListedMod()
@@ -292,13 +293,10 @@ public sealed class GamebananaService : IDisposable
                 IsObsolete = false,
                 Installed = manifest.Mods.ContainsKey(sub.Id),
                 HasUpdate = false // TODO!!
-            }).ToArray();
-
-        _cache.Set(GetCacheKey(), mods, s_topSubmissionsCacheTime);
-        return mods;
+            });
     }
 
-    public async Task<IReadOnlyList<ListedMod>> GetFeaturedAsync(Visibility defaultVisibility, TomeManifest manifest)
+    public async Task<IEnumerable<ListedMod>> GetFeaturedAsync(Visibility defaultVisibility, TomeManifest manifest)
     {
         static int GetPriority(FeaturingGroup group) => group switch
         {
@@ -310,11 +308,13 @@ public sealed class GamebananaService : IDisposable
 
         string GetCacheKey() => $"featured:{defaultVisibility}";
 
-        if (_cache.TryGetValue(GetCacheKey(), out IReadOnlyList<ListedMod>? cachedMods))
-            return cachedMods!;
+        if (!_cache.TryGetValue(GetCacheKey(), out FeaturedSubmissions? featured))
+        {
+            featured = await Gamebanana.Games.Search.FeaturedAsync(DeadlockGameId);
+            _cache.Set(GetCacheKey(), featured, s_featuredCacheTime);
+        }
 
-        FeaturedSubmissions featured = await Gamebanana.Games.Search.FeaturedAsync(DeadlockGameId);
-        ListedMod[] mods = featured.Submissions
+        return featured!.Submissions
             .OrderBy(static sub =>
                 GetPriority(sub.Featurings
                 .OrderBy(static feat => GetPriority(feat.Group))
@@ -331,10 +331,7 @@ public sealed class GamebananaService : IDisposable
                 IsObsolete = sub.IsObsolete,
                 Installed = manifest.Mods.ContainsKey(sub.Id),
                 HasUpdate = false // TODO!!
-            }).ToArray();
-
-        _cache.Set(GetCacheKey(), mods, s_featuredCacheTime);
-        return mods;
+            });
     }
 
     #endregion

@@ -318,7 +318,7 @@ public sealed partial class MainWindow : Window
         _currentCategory = newChecked;
     }
 
-    private async void RunModsUpdateSafe(Func<Task<IReadOnlyList<ListedMod>>> func)
+    private async void RunModsUpdateSafe(Func<Task<IEnumerable<ListedMod>>> func)
     {
         await _getSemaphore.WaitAsync();
         try
@@ -394,7 +394,7 @@ public sealed partial class MainWindow : Window
 
         if (mod.Update)
             _actions[minimal] = ModAction.Update;
-        else if (_actions.TryGetValue(minimal out ModAction queuedAction)
+        else if (_actions.TryGetValue(minimal, out ModAction queuedAction)
             && queuedAction == ModAction.Update)
             _actions.Remove(minimal);
     }
