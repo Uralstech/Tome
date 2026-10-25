@@ -15,7 +15,6 @@
 using GamebananaAPI.Data.Submission;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -344,22 +343,9 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void GitHub_Click(object sender, RoutedEventArgs e)
-    {
-        using Process? _ = Process.Start(new ProcessStartInfo
-        {
-            FileName = "https://github.com/Uralstech/Tome",
-            UseShellExecute = true
-        });
-    }
+    private void GitHub_Click(object sender, RoutedEventArgs e) =>
+        UrlHelper.Open("https://github.com/Uralstech/Tome");
 
-    private void LaunchDeadlock_Click(object sender, RoutedEventArgs e)
-    {
-        using Process? proc = _deadlock.LaunchDeadlock();
-        if (proc is null)
-        {
-            MessageBox.Show("Could not start Deadlock.");
-            return;
-        }
-    }
+    private void LaunchDeadlock_Click(object sender, RoutedEventArgs e) =>
+        _deadlock.LaunchDeadlock();
 }

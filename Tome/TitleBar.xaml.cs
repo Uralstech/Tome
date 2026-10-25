@@ -32,23 +32,23 @@ public sealed partial class TitleBar : UserControl
         set => SetValue(MenuContentProperty, value);
     }
 
-    public Window Window => Window.GetWindow(this);
-
     public TitleBar()
     {
         InitializeComponent();
     }
 
+    private Window GetWindow() => Window.GetWindow(this);
+
     private void Minimize_Click(object sender, RoutedEventArgs e) =>
-        Window.WindowState = WindowState.Minimized;
+        GetWindow().WindowState = WindowState.Minimized;
 
     private void Maximize_Click(object sender, RoutedEventArgs e)
     {
-        Window window = Window;
+        Window window = GetWindow();
         window.WindowState = window.WindowState == WindowState.Maximized
             ? WindowState.Normal : WindowState.Maximized;
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) =>
-        Window.Close();
+        GetWindow().Close();
 }

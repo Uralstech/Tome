@@ -31,14 +31,8 @@ public sealed class DeadlockService(FileService fileService)
 
     private readonly FileService _fileService = fileService;
 
-    public Process? LaunchDeadlock()
-    {
-        return Process.Start(new ProcessStartInfo
-        {
-            FileName = $"steam://rungameid/{DeadlockAppId}",
-            UseShellExecute = true
-        });
-    }
+    public void LaunchDeadlock() =>
+        UrlHelper.Open($"steam://rungameid/{DeadlockAppId}");
 
     public string GetAddonsPath(string basePath)
     {
