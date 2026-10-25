@@ -109,7 +109,7 @@ limitations under the License.
                     <DataGridTemplateColumn Width="5">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Button Content="?" Click="InfoButton_Click" Tag="{Binding}" />
+                                <Button Content="?" Click="ModsInfo_Click" Tag="{Binding}" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

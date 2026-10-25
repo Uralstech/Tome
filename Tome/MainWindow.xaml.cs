@@ -15,10 +15,12 @@
 using GamebananaAPI.Data.Submission;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using Tome.Models;
 using Tome.Services;
 
@@ -31,11 +33,11 @@ public sealed partial class MainWindow : Window
     private readonly GamebananaService _gamebanana;
 
     private readonly SemaphoreSlim _getSemaphore = new(1, 1);
-    private readonly ObservableCollection<ListedMod> _mods = [];
+    private readonly ObservableCollection<ListedMod> _modsList = [];
 
+    private TomeManifest _manifest = null!;
     private MenuItem _defaultFilterMenu = null!;
-    private TomeManifest _installations = null!;
-    private ToggleButton? _currentChecked = null;
+    private ToggleButton? _currentCategory = null;
 
     public MainWindow(FileService files, DeadlockService deadlock, GamebananaService gamebanana)
     {
@@ -44,57 +46,73 @@ public sealed partial class MainWindow : Window
         _files = files;
         _deadlock = deadlock;
         _gamebanana = gamebanana;
-        ModsGrid.ItemsSource = _mods;
+        ModsGrid.ItemsSource = _modsList;
+    }
+
+    private void Window_ContentRendered(object sender, EventArgs e)
+    {
+        if (!InitializeManifest())
+            return;
+
+        PatchInstall();
+        VerifyManifest();
+
+        FilterChange_Click(null, null);
+
+        FeaturedButton.IsChecked = true;
+        SetCurrentCategory(FeaturedButton);
     }
 
     protected override void OnClosed(EventArgs e)
     {
         _getSemaphore.Dispose();
-
         base.OnClosed(e);
     }
+
+    #region Core Initialization
 
     private bool InitializeManifest()
     {
         if (_files.TryGetManifest(out TomeManifest? manifest)
             && _deadlock.VerifyDeadlockInstallation(manifest.GamePath))
         {
-            _installations = manifest;
+            _manifest = manifest;
             return true;
         }
 
         if (!_deadlock.TryGetDeadlockPath(out string? deadlockPath)
             || !_deadlock.VerifyDeadlockInstallation(deadlockPath))
         {
-            MessageBox.Show(this, "Could not find a Deadlock installation. Please select it manually.", "Could not find Deadlock", MessageBoxButton.OK, MessageBoxImage.Exclamation);
-            deadlockPath = RequestDeadlockFolder(null);
-
-            if (!_deadlock.VerifyDeadlockInstallation(deadlockPath))
+            MessageBox.Show(this, "Could not find a Deadlock installation. Please select it manually.",
+                                  "Could not find Deadlock", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+            
+            if (!TryRequestDeadlockFolder(null, out deadlockPath)
+                || !_deadlock.VerifyDeadlockInstallation(deadlockPath))
             {
-                MessageBox.Show(this, "The provided path could not be verified.", "Invalid path", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, "The provided path could not be verified, quitting.",
+                                      "Invalid path", MessageBoxButton.OK, MessageBoxImage.Error);
+
                 Application.Current.Shutdown();
                 return false;
             }
         }
         else
         {
-            MessageBox.Show(this, $"Deadlock successfully detected at: {deadlockPath}", "Deadlock found", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, $"Deadlock successfully detected at: {deadlockPath}",
+                                  "Deadlock found", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        manifest ??= new TomeManifest()
-        {
-            GamePath = deadlockPath
-        };
-
+        manifest ??= new TomeManifest { GamePath = string.Empty };
         manifest.GamePath = deadlockPath;
+
         _files.SaveManifest(manifest);
-        _installations = manifest;
+        _manifest = manifest;
         return true;
     }
 
     private void VerifyManifest()
     {
-        if (_deadlock.VerifyManifest(_installations, out ManifestVerificationFailures? failures))
+        if (_deadlock.VerifyManifest(_manifest, out ManifestVerificationFailures? failures))
             return;
 
         MessageBoxResult result = MessageBox.Show(this, $"Multiple warnings while verifying mod list:\n- {string.Join("\n- ", failures.ProblematicMods.Values)}" +
@@ -103,15 +121,17 @@ public sealed partial class MainWindow : Window
                                                         "Failed mod list verification", MessageBoxButton.YesNo, MessageBoxImage.Error);
 
         if (result == MessageBoxResult.Yes)
-            result = MessageBox.Show(this, $"All problematic mods installed in '{_deadlock.GetAddonsPath(_installations.GamePath)}' will be deleted, " +
+        {
+            result = MessageBox.Show(this, $"All problematic mods installed in '{_deadlock.GetAddonsPath(_manifest.GamePath)}' will be deleted " +
                                            "after being backed up. Continue?", "Are you sure?", MessageBoxButton.YesNo, MessageBoxImage.Stop);
+        }
 
         if (result != MessageBoxResult.Yes)
             return;
-        
+
         SaveFileDialog dialog = new()
         {
-            Title = "Save the backup",
+            Title = "Backup all problematic mods",
             CheckPathExists = true,
             AddExtension = true,
             FileName = "mods.zip",
@@ -127,13 +147,12 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            _deadlock.ClearManifestFailures(_installations, failures, dialog.FileName);
+            _deadlock.ClearManifestFailures(_manifest, failures, dialog.FileName);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this,
-                ex.Message, "Operation failed",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "Operation failed",
+                                  MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -141,13 +160,13 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            _deadlock.PatchDeadlockGameInfo(_installations.GamePath, out bool corruptWithBackup);
+            _deadlock.PatchDeadlockGameInfo(_manifest.GamePath, out bool corruptWithBackup);
             if (!corruptWithBackup)
                 return;
 
             if (isRetry)
             {
-                MessageBox.Show(this, "Please check if Tome has updates or raise this as an issue on GitHub.", "Patch failed",
+                MessageBox.Show(this, "Please check if Tome has updates or raise an issue on GitHub.", "Patch failed",
                                       MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
@@ -159,7 +178,7 @@ public sealed partial class MainWindow : Window
             if (result != MessageBoxResult.Yes)
                 return;
 
-            _deadlock.RestoreGameInfo(_installations.GamePath);
+            _deadlock.RestoreGameInfo(_manifest.GamePath);
             MessageBox.Show(this, "gameinfo.gi was restored from a backup. Patching again...", "gameinfo.gi restored",
                                   MessageBoxButton.OK, MessageBoxImage.Information);
 
@@ -167,37 +186,169 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this,
-                ex.Message, "Could not patch Deadlock",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "Could not patch Deadlock",
+                                  MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
-    private string? RequestDeadlockFolder(string? existing)
+    private bool TryRequestDeadlockFolder(string? existing, [NotNullWhen(true)] out string? path)
     {
+        path = null;
         OpenFolderDialog dialog = new()
         {
             InitialDirectory = existing,
             Title = "Select the Deadlock folder"
         };
 
-        return dialog.ShowDialog() == true
-            ? dialog.FolderName : null;
+        if (dialog.ShowDialog() != true)
+            return false;
+
+        path = dialog.FolderName;
+        return true;
     }
 
-    private void SetChecked(ToggleButton? newChecked)
+    #endregion
+
+    #region MenuBar
+
+    private void MenuItem_Loaded(object sender, RoutedEventArgs e) =>
+        _defaultFilterMenu = (MenuItem)sender;
+
+    private void UpdateGamePath_Click(object sender, RoutedEventArgs e)
     {
-        if (ReferenceEquals(_currentChecked, newChecked))
+        if (!TryRequestDeadlockFolder(_manifest.GamePath, out string? deadlockPath)
+            || Path.GetFullPath(deadlockPath) == Path.GetFullPath(_manifest.GamePath))
             return;
 
-        _currentChecked?.IsChecked = false;
-        _currentChecked = newChecked;
+        if (!_deadlock.VerifyDeadlockInstallation(deadlockPath))
+        {
+            MessageBox.Show(this, "The provided path could not be verified.",
+                                  "Invalid path", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        if (_manifest.Skins.Count + _manifest.ModelReplacements.Count + _manifest.Misc.Count > 0)
+        {
+            MessageBoxResult result = MessageBox.Show(this, "The mods list managed by Tome will be cleared when switching to a different Deadlock installation.",
+                                                            "Clear mods list?", MessageBoxButton.YesNo);
+
+            if (result == MessageBoxResult.No)
+                return;
+
+            _manifest.Skins.Clear();
+            _manifest.ModelReplacements.Clear();
+            _manifest.Misc.Clear();
+        }
+
+        _manifest.GamePath = deadlockPath;
+        _files.SaveManifest(_manifest);
+
+        PatchInstall();
     }
+
+    private void FilterChange_Click(object? sender, RoutedEventArgs? e)
+    {
+        if (sender is MenuItem menuItem
+            && menuItem.Tag is GamebananaAPI.Data.Visibility newFilter)
+        {
+            _manifest.DefaultFilters = newFilter;
+            _files.SaveManifest(_manifest);
+        }
+
+        ItemCollection menuItems = _defaultFilterMenu.Items;
+        for (int i = 0; i < menuItems.Count; i++)
+        {
+            ((MenuItem)menuItems[i]).IsChecked =
+                (int)_manifest.DefaultFilters == i;
+        }
+    }
+
+    private void GitHub_Click(object sender, RoutedEventArgs e) =>
+        UrlHelper.Open("https://github.com/Uralstech/Tome");
+
+    private void LaunchDeadlock_Click(object sender, RoutedEventArgs e) =>
+        _deadlock.LaunchDeadlock();
+
+    #endregion
+
+    #region Search
+
+    private void Search_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Enter or Key.Return))
+            return;
+
+        e.Handled = true;
+        SearchSafe();
+    }
+
+    private void Search_Click(object sender, RoutedEventArgs e) =>
+        SearchSafe();
 
     private void SearchSafe()
     {
-        SetChecked(null);
-        RunModsUpdateSafe(() => _gamebanana.SearchAsync(SearchBox.Text, _installations.DefaultFilters));
+        SetCurrentCategory(null);
+        RunModsUpdateSafe(() =>
+            _gamebanana.SearchAsync(SearchBox.Text, _manifest.DefaultFilters));
+    }
+
+    #endregion
+
+    #region Categories
+
+    private void Category_Checked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleButton selectedButton)
+            return;
+
+        SetCurrentCategory(selectedButton);
+
+        if (ReferenceEquals(sender, FeaturedButton))
+            RunModsUpdateSafe(() => _gamebanana.GetFeaturedAsync(_manifest.DefaultFilters));
+        else if (ReferenceEquals(sender, TopSubmissionsButton))
+            RunModsUpdateSafe(() => _gamebanana.GetTopSubmissionsAsync(_manifest.DefaultFilters));
+    }
+
+    private void SetCurrentCategory(ToggleButton? newChecked)
+    {
+        if (ReferenceEquals(_currentCategory, newChecked))
+            return;
+
+        _currentCategory?.IsChecked = false;
+        _currentCategory = newChecked;
+    }
+
+    private async void RunModsUpdateSafe(Func<Task<IReadOnlyList<ListedMod>>> func)
+    {
+        await _getSemaphore.WaitAsync();
+        try
+        {
+            _modsList.Clear();
+            foreach (ListedMod mod in await func())
+                _modsList.Add(mod);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Operation failed",
+                                  MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _getSemaphore.Release();
+        }
+    }
+
+    #endregion
+
+    #region Mod Management
+
+    private void ModsInfo_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button
+            || button.Tag is not ListedMod mod)
+            return;
+
+        ShowModInfoSafeAsync(mod.Id, mod.Type);
     }
 
     private async void ShowModInfoSafeAsync(int id, string type)
@@ -211,10 +362,8 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this,
-                ex.Message,
-                "Operation failed",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "Operation failed",
+                                  MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -222,130 +371,5 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async void RunModsUpdateSafe(Func<Task<IReadOnlyList<ListedMod>>> func)
-    {
-        await _getSemaphore.WaitAsync();
-        try
-        {
-            _mods.Clear();
-            foreach (ListedMod mod in await func())
-                _mods.Add(mod);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(this,
-                ex.Message,
-                "Operation failed",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        finally
-        {
-            _getSemaphore.Release();
-        }
-    }
-
-    private void Window_ContentRendered(object sender, EventArgs e)
-    {
-        if (!InitializeManifest())
-            return;
-
-        PatchInstall();
-        VerifyManifest();
-
-        FilterChange_Click(null, null);
-
-        FeaturedButton.IsChecked = true;
-        SetChecked(FeaturedButton);
-    }
-
-    private void UpdateGamePath_Click(object sender, RoutedEventArgs e)
-    {
-        string? deadlockPath = RequestDeadlockFolder(_installations.GamePath);
-        if (string.IsNullOrEmpty(deadlockPath)
-            || Path.GetFullPath(deadlockPath) == Path.GetFullPath(_installations.GamePath))
-            return;
-
-        if (!_deadlock.VerifyDeadlockInstallation(deadlockPath))
-        {
-            MessageBox.Show(this, "The provided path could not be verified.", "Invalid path", MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
-        }
-
-        if (_installations.Skins.Count + _installations.ModelReplacements.Count + _installations.Misc.Count > 0)
-        {
-            MessageBoxResult result = MessageBox.Show(this, "The mods list managed by Tome will be cleared when switching to a different Deadlock installation.", "Clear mods list?",
-                                                            MessageBoxButton.YesNo);
-
-            if (result == MessageBoxResult.No)
-                return;
-
-            _installations.Skins.Clear();
-            _installations.ModelReplacements.Clear();
-            _installations.Misc.Clear();
-        }
-
-        _installations.GamePath = deadlockPath;
-        _files.SaveManifest(_installations);
-
-        PatchInstall();
-    }
-
-    private void Search_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
-    {
-        if (e.Key is System.Windows.Input.Key.Enter or System.Windows.Input.Key.Return)
-        {
-            e.Handled = true;
-            SearchSafe();
-        }
-    }
-
-    private void Search_Click(object sender, RoutedEventArgs e) => SearchSafe();
-
-    private void InfoButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button button
-            || button.Tag is not ListedMod mod)
-            return;
-
-        ShowModInfoSafeAsync(mod.Id, mod.Type);
-    }
-
-    private void Category_Checked(object sender, RoutedEventArgs e)
-    {
-        if (sender is not ToggleButton selectedButton)
-            return;
-
-        SetChecked(selectedButton);
-
-        if (ReferenceEquals(sender, FeaturedButton))
-            RunModsUpdateSafe(() => _gamebanana.GetFeaturedAsync(_installations.DefaultFilters));
-        else if (ReferenceEquals(sender, TopSubmissionsButton))
-            RunModsUpdateSafe(() => _gamebanana.GetTopSubmissionsAsync(_installations.DefaultFilters));
-    }
-
-    private void MenuItem_Loaded(object sender, RoutedEventArgs e) =>
-        _defaultFilterMenu = (MenuItem)sender;
-
-    private void FilterChange_Click(object? sender, RoutedEventArgs? e)
-    {
-        if (sender is MenuItem menuItem
-            && menuItem.Tag is GamebananaAPI.Data.Visibility newFilter)
-        {
-            _installations.DefaultFilters = newFilter;
-            _files.SaveManifest(_installations);
-        }
-
-        ItemCollection menuItems = _defaultFilterMenu.Items;
-        for (int i = 0; i < menuItems.Count; i++)
-        {
-            (menuItems[i] as MenuItem)?.IsChecked =
-                (int)_installations.DefaultFilters == i;
-        }
-    }
-
-    private void GitHub_Click(object sender, RoutedEventArgs e) =>
-        UrlHelper.Open("https://github.com/Uralstech/Tome");
-
-    private void LaunchDeadlock_Click(object sender, RoutedEventArgs e) =>
-        _deadlock.LaunchDeadlock();
+    #endregion
 }
