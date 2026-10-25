@@ -342,7 +342,7 @@ public sealed class DeadlockService(FileService fileService)
                     if (!Directory.Exists(gamePath))
                         continue;
 
-                    path = gamePath;
+                    path = Path.GetFullPath(gamePath);
                     return true;
                 }
             }

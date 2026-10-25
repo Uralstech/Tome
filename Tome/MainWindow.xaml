@@ -24,7 +24,7 @@
                   WindowChrome.IsHitTestVisibleInChrome="True">
 
                     <MenuItem Header="_File">
-                        <MenuItem Header="Update Game Path"/>
+                        <MenuItem Header="Update Game Path" Click="UpdateGamePath_Click"/>
                         <MenuItem Header="Launch Deadlock" Click="LaunchDeadlock_Click"/>
                         <Separator/>
                         <MenuItem Header="Default Filters" Loaded="MenuItem_Loaded">

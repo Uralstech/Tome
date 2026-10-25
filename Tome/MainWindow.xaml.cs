@@ -2,6 +2,7 @@
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -163,7 +164,7 @@ public sealed partial class MainWindow : Window
     {
         OpenFolderDialog dialog = new()
         {
-            FolderName = existing,
+            InitialDirectory = existing,
             Title = "Select the Deadlock folder"
         };
 
@@ -242,6 +243,38 @@ public sealed partial class MainWindow : Window
 
         FeaturedButton.IsChecked = true;
         SetChecked(FeaturedButton);
+    }
+
+    private void UpdateGamePath_Click(object sender, RoutedEventArgs e)
+    {
+        string? deadlockPath = RequestDeadlockFolder(_installations.GamePath);
+        if (string.IsNullOrEmpty(deadlockPath)
+            || Path.GetFullPath(deadlockPath) == Path.GetFullPath(_installations.GamePath))
+            return;
+
+        if (!_deadlock.VerifyDeadlockInstallation(deadlockPath))
+        {
+            MessageBox.Show(this, "The provided path could not be verified.", "Invalid path", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        if (_installations.Skins.Count + _installations.ModelReplacements.Count + _installations.Misc.Count > 0)
+        {
+            MessageBoxResult result = MessageBox.Show(this, "The mods list managed by Tome will be cleared when switching to a different Deadlock installation.", "Clear mods list?",
+                                                            MessageBoxButton.YesNo);
+
+            if (result == MessageBoxResult.No)
+                return;
+
+            _installations.Skins.Clear();
+            _installations.ModelReplacements.Clear();
+            _installations.Misc.Clear();
+        }
+
+        _installations.GamePath = deadlockPath;
+        _files.SaveManifest(_installations);
+
+        PatchInstall();
     }
 
     private void Search_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
