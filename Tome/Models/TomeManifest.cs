@@ -1,18 +1,22 @@
-﻿
+﻿using GamebananaAPI.Data;
 using System.Text.Json.Serialization;
 
 namespace Tome.Models;
 
-[JsonSerializable(typeof(InstallationsManifest))]
+[JsonSerializable(typeof(TomeManifest))]
 [JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization | JsonSourceGenerationMode.Metadata)]
-internal sealed partial class InstallationsManifestJsonContext : JsonSerializerContext;
+internal sealed partial class TomeManifestJsonContext : JsonSerializerContext;
 
 /// <summary>Managed mod installations.</summary>
-public sealed class InstallationsManifest
+public sealed class TomeManifest
 {
     /// <summary>Path to the game folder.</summary>
     [JsonPropertyName("gamePath")]
     public required string GamePath { get; set; }
+
+    /// <summary>Default filters to use in search, featured, top submissions.</summary>
+    [JsonPropertyName("defaultFilters")]
+    public Visibility DefaultFilters { get; set; } = Visibility.Show;
 
     /// <summary>Installed skins where the key is the ritualist category ID (eg. 42671 for Silver, 49631 for Violet).</summary>
     /// <remarks>Since each ritualist can have multiple mods (eg. recolor mod + 3D model mod), the dictionary value is a list.</remarks>

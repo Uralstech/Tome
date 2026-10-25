@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Tome"
+        xmlns:gamebanana="clr-namespace:GamebananaAPI.Data;assembly=GamebananaAPI"
         mc:Ignorable="d"
         WindowStyle="None"
         ContentRendered="Window_ContentRendered"
@@ -22,14 +23,19 @@
                   Background="Transparent"
                   WindowChrome.IsHitTestVisibleInChrome="True">
 
-                    <MenuItem Header="_Game">
-                        <MenuItem Header="Game Path"/>
+                    <MenuItem Header="_File">
+                        <MenuItem Header="Update Game Path"/>
                         <MenuItem Header="Launch Deadlock" Click="LaunchDeadlock_Click"/>
-                        <MenuItem Header="Default Filters"/>
+                        <Separator/>
+                        <MenuItem Header="Default Filters" Loaded="MenuItem_Loaded">
+                            <MenuItem Header="SFW Only" IsCheckable="True" Tag="{x:Static gamebanana:Visibility.Show}" Click="FilterChange_Click"/>
+                            <MenuItem Header="SFW + Content Warnings" IsCheckable="True" Tag="{x:Static gamebanana:Visibility.Warn}" Click="FilterChange_Click"/>
+                            <MenuItem Header="All Content (Including NSFW)" IsCheckable="True" Tag="{x:Static gamebanana:Visibility.Hide}" Click="FilterChange_Click"/>
+                        </MenuItem>
                     </MenuItem>
 
                     <MenuItem Header="_Help">
-                        <MenuItem Header="_GitHub" Click="GitHub_Click"/>
+                        <MenuItem Header="GitHub" Click="GitHub_Click"/>
                     </MenuItem>
                 </Menu>
             </local:TitleBar.MenuContent>

@@ -14,7 +14,7 @@ public sealed class FileService
             "Uralstech", "Tome");
 
     private static string GetIinstallationsManifestPath() =>
-        Path.Combine(GetAppDataDirectory(), "installationsManifest.json");
+        Path.Combine(GetAppDataDirectory(), "tomeManifest.json");
 
     public string GetSaveDirectory()
     {
@@ -23,7 +23,7 @@ public sealed class FileService
         return path;
     }
 
-    public bool TryGetManifest([NotNullWhen(true)] out InstallationsManifest? manifest)
+    public bool TryGetManifest([NotNullWhen(true)] out TomeManifest? manifest)
     {
         manifest = null;
         
@@ -35,7 +35,7 @@ public sealed class FileService
 
             using FileStream stream = File.OpenRead(path);
             
-            manifest = JsonSerializer.Deserialize(stream, InstallationsManifestJsonContext.Default.InstallationsManifest);
+            manifest = JsonSerializer.Deserialize(stream, TomeManifestJsonContext.Default.TomeManifest);
             return manifest != null;
         }
         catch (Exception ex)
@@ -45,13 +45,16 @@ public sealed class FileService
         }
     }
 
-    public void SaveManifest(InstallationsManifest manifest)
+    public void SaveManifest(TomeManifest manifest)
     {
         string path = GetIinstallationsManifestPath();
+        string dir = Path.GetDirectoryName(path)!;
+        Directory.CreateDirectory(dir);
+
         WriteMetaFor(path);
 
         using FileStream stream = File.Create(path);
-        JsonSerializer.Serialize(stream, manifest, InstallationsManifestJsonContext.Default.InstallationsManifest);
+        JsonSerializer.Serialize(stream, manifest, TomeManifestJsonContext.Default.TomeManifest);
     }
 
     public void WriteMetaFor(string filePath)

@@ -17,9 +17,10 @@ public sealed partial class MainWindow : Window
     private readonly FileService _files;
     private readonly DeadlockService _deadlock;
     private readonly GamebananaService _gamebanana;
-
     private readonly ObservableCollection<ListedMod> _mods = [];
-    private InstallationsManifest _installations = null!;
+
+    private MenuItem _defaultFilterMenu = null!;
+    private TomeManifest _installations = null!;
     private ToggleButton? _currentChecked = null;
 
     public MainWindow(FileService files, DeadlockService deadlock, GamebananaService gamebanana)
@@ -41,7 +42,7 @@ public sealed partial class MainWindow : Window
 
     private bool InitializeManifest()
     {
-        if (_files.TryGetManifest(out InstallationsManifest? manifest)
+        if (_files.TryGetManifest(out TomeManifest? manifest)
             && _deadlock.VerifyDeadlockInstallation(manifest.GamePath))
         {
             _installations = manifest;
@@ -66,7 +67,7 @@ public sealed partial class MainWindow : Window
             MessageBox.Show(this, $"Deadlock successfully detected at: {deadlockPath}", "Deadlock found", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        manifest ??= new InstallationsManifest()
+        manifest ??= new TomeManifest()
         {
             GamePath = deadlockPath
         };
@@ -182,7 +183,7 @@ public sealed partial class MainWindow : Window
     private void SearchSafe()
     {
         SetChecked(null);
-        RunModsUpdateSafe(() => _gamebanana.SearchAsync(SearchBox.Text));
+        RunModsUpdateSafe(() => _gamebanana.SearchAsync(SearchBox.Text, _installations.DefaultFilters));
     }
 
     private async void ShowModInfoSafeAsync(int id, string type)
@@ -237,6 +238,8 @@ public sealed partial class MainWindow : Window
         PatchInstall();
         VerifyManifest();
 
+        FilterChange_Click(null, null);
+
         FeaturedButton.IsChecked = true;
         SetChecked(FeaturedButton);
     }
@@ -269,9 +272,29 @@ public sealed partial class MainWindow : Window
         SetChecked(selectedButton);
 
         if (ReferenceEquals(sender, FeaturedButton))
-            RunModsUpdateSafe(() => _gamebanana.GetFeaturedAsync());
+            RunModsUpdateSafe(() => _gamebanana.GetFeaturedAsync(_installations.DefaultFilters));
         else if (ReferenceEquals(sender, TopSubmissionsButton))
-            RunModsUpdateSafe(() => _gamebanana.GetTopSubmissionsAsync());
+            RunModsUpdateSafe(() => _gamebanana.GetTopSubmissionsAsync(_installations.DefaultFilters));
+    }
+
+    private void MenuItem_Loaded(object sender, RoutedEventArgs e) =>
+        _defaultFilterMenu = (MenuItem)sender;
+
+    private void FilterChange_Click(object? sender, RoutedEventArgs? e)
+    {
+        if (sender is MenuItem menuItem
+            && menuItem.Tag is GamebananaAPI.Data.Visibility newFilter)
+        {
+            _installations.DefaultFilters = newFilter;
+            _files.SaveManifest(_installations);
+        }
+
+        ItemCollection menuItems = _defaultFilterMenu.Items;
+        for (int i = 0; i < menuItems.Count; i++)
+        {
+            (menuItems[i] as MenuItem)?.IsChecked =
+                (int)_installations.DefaultFilters == i;
+        }
     }
 
     private void GitHub_Click(object sender, RoutedEventArgs e)

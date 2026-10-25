@@ -36,7 +36,7 @@ public sealed class DeadlockService(FileService fileService)
     public string GetGameInfoPath(string basePath) =>
         Path.Combine(basePath, "game\\citadel\\gameinfo.gi");
 
-    public void ClearManifestFailures(InstallationsManifest manifest, ManifestVerificationFailures failures, string backupZip)
+    public void ClearManifestFailures(TomeManifest manifest, ManifestVerificationFailures failures, string backupZip)
     {
         string safeAddonsPath = GetAddonsPath(manifest.GamePath);
         if (!Path.EndsInDirectorySeparator(safeAddonsPath))
@@ -77,7 +77,7 @@ public sealed class DeadlockService(FileService fileService)
         _fileService.SaveManifest(manifest);
     }
 
-    public bool VerifyManifest(InstallationsManifest manifest, [NotNullWhen(false)] out ManifestVerificationFailures? failures)
+    public bool VerifyManifest(TomeManifest manifest, [NotNullWhen(false)] out ManifestVerificationFailures? failures)
     {
         IEnumerable<InstalledMod> allMods = manifest.Skins.Values.Concat(
             manifest.ModelReplacements.Values

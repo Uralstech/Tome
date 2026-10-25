@@ -90,7 +90,7 @@ public sealed class GamebananaService : IDisposable
             ? profile : throw new InvalidOperationException("Cannot use mod with no listed files.");
     }
 
-    public async Task<IReadOnlyList<ListedMod>> SearchAsync(string unformattedQuery, Visibility defaultVisibility = Visibility.Show)
+    public async Task<IReadOnlyList<ListedMod>> SearchAsync(string unformattedQuery, Visibility defaultVisibility)
     {
         string[] parts = unformattedQuery.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         StringBuilder query = new();
@@ -228,7 +228,7 @@ public sealed class GamebananaService : IDisposable
                 }];
     }
 
-    public async Task<IReadOnlyList<ListedMod>> GetTopSubmissionsAsync(Visibility defaultVisibility = Visibility.Show)
+    public async Task<IReadOnlyList<ListedMod>> GetTopSubmissionsAsync(Visibility defaultVisibility)
     {
         static int GetPriority(TopSubmissionPeriod group) => group switch
         {
@@ -265,7 +265,7 @@ public sealed class GamebananaService : IDisposable
         return mods;
     }
 
-    public async Task<IReadOnlyList<ListedMod>> GetFeaturedAsync(Visibility defaultVisibility = Visibility.Show)
+    public async Task<IReadOnlyList<ListedMod>> GetFeaturedAsync(Visibility defaultVisibility)
     {
         static int GetPriority(FeaturingGroup group) => group switch
         {
