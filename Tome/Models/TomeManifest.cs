@@ -65,7 +65,7 @@ public sealed class GamebananaMetadata
 
     /// <summary>The Gamebanana submission type (Mod/Sound).</summary>
     [JsonPropertyName("submissionType")]
-    public required int SubmissionType { get; set; }
+    public required string SubmissionType { get; set; }
 
     /// <summary>The Gamebanana submission category.</summary>
     [JsonPropertyName("submissionCategoryType")]

@@ -115,7 +115,7 @@ public sealed class GamebananaService : IDisposable
 
     private ListedMod BuildListedMod(
         int id, string type, string name,
-        int likes, string author, bool isObsolete,
+        int likes, string author, bool isObsolete, bool isLocal,
         TomeManifest manifest, ModActions pendingActions)
     {
         ListedModMinimal minimal = new(id, type);
@@ -129,13 +129,51 @@ public sealed class GamebananaService : IDisposable
             Likes = likes,
             Author = author,
             IsObsolete = isObsolete,
+            IsLocal = isLocal,
             Installed = hasPendingAction
                 ? pendingAction is ModAction.Install or ModAction.Update
                 : manifest.Mods.ContainsKey(id),
             Update = hasPendingAction && pendingAction is ModAction.Update,
             HasUpdate = (hasPendingAction && pendingAction is ModAction.Update)
-                        || false // TODO!!
+                        || false, // TODO!
         };
+    }
+
+    public async Task<IEnumerable<ListedMod>> GetInstalledSubmissionsAsync(TomeManifest manifest, ModActions pendingActions)
+    {
+        List<ListedMod> list = new(manifest.Mods.Count);
+        foreach ((int id, InstalledMod mod) in manifest.Mods)
+        {
+            if (mod.GamebananaMetadata is GamebananaMetadata gamebanana)
+            {
+                SubmissionProfile submission = await GetSubmissionAsync(gamebanana.SubmissionId, gamebanana.SubmissionType);
+                list.Add(BuildListedMod(
+                    id: gamebanana.SubmissionId,
+                    type: gamebanana.SubmissionType,
+                    name: submission.Name,
+                    likes: submission.Likes,
+                    author: submission.Author.Name,
+                    isObsolete: submission.IsObsolete,
+                    isLocal: false,
+                    manifest: manifest, pendingActions: pendingActions
+                ));
+
+                continue;
+            }
+
+            list.Add(BuildListedMod(
+                id: id,
+                type: string.Empty,
+                name: mod.ListingMetadata?.Name ?? "locally installed mod",
+                likes: 0,
+                author: mod.ListingMetadata?.Author ?? "unknown",
+                isObsolete: false,
+                isLocal: true,
+                manifest: manifest, pendingActions: pendingActions
+            ));
+        }
+
+        return list;
     }
 
     public async Task<IEnumerable<ListedMod>> SearchAsync(string unformattedQuery,
@@ -185,7 +223,7 @@ public sealed class GamebananaService : IDisposable
                         name: submission.Name,
                         likes: submission.Likes,
                         author: submission.Author.Name,
-                        isObsolete: submission.IsObsolete,
+                        isObsolete: submission.IsObsolete, isLocal: false,
                         manifest: manifest, pendingActions: pendingActions
                     )];
 
@@ -237,7 +275,7 @@ public sealed class GamebananaService : IDisposable
                 name: sub.Name,
                 likes: sub.Likes,
                 author: sub.Author.Name,
-                isObsolete: sub.IsObsolete,
+                isObsolete: sub.IsObsolete, isLocal: false,
                 manifest: manifest, pendingActions: pendingActions
             ));
     }
@@ -273,7 +311,7 @@ public sealed class GamebananaService : IDisposable
             name: submission.Name,
             likes: submission.Likes,
             author: submission.Author.Name,
-            isObsolete: submission.IsObsolete,
+            isObsolete: submission.IsObsolete, isLocal: false,
             manifest: manifest, pendingActions: pendingActions
         )];
     }
@@ -310,7 +348,7 @@ public sealed class GamebananaService : IDisposable
                 name: sub.Name,
                 likes: sub.Likes,
                 author: sub.Author.Name,
-                isObsolete: false,
+                isObsolete: false, isLocal: false,
                 manifest: manifest, pendingActions: pendingActions
             ));
     }
@@ -347,7 +385,7 @@ public sealed class GamebananaService : IDisposable
                 name: sub.Name,
                 likes: sub.Likes,
                 author: sub.Author.Name,
-                isObsolete: sub.IsObsolete,
+                isObsolete: sub.IsObsolete, isLocal: false,
                 manifest: manifest, pendingActions: pendingActions
             ));
     }

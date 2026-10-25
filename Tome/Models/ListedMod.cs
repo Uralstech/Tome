@@ -24,6 +24,7 @@ public sealed class ListedMod : INotifyPropertyChanged
     public required string Name { get; init; }
     public required string Author { get; init; }
     public required bool IsObsolete { get; init; }
+    public required bool IsLocal { get; init; }
     public required int Likes { get; init; }
 
     public required bool Installed

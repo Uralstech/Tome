@@ -307,6 +307,8 @@ public sealed partial class MainWindow : Window
             RunModsUpdateSafe(() => _gamebanana.GetFeaturedAsync(_manifest.DefaultFilters, _manifest, _pendingActions));
         else if (ReferenceEquals(sender, TopSubmissionsButton))
             RunModsUpdateSafe(() => _gamebanana.GetTopSubmissionsAsync(_manifest.DefaultFilters, _manifest, _pendingActions));
+        else if (ReferenceEquals(sender, InstalledButton))
+            RunModsUpdateSafe(() => _gamebanana.GetInstalledSubmissionsAsync(_manifest, _pendingActions));
     }
 
     private void SetCurrentCategory(ToggleButton? newChecked)
@@ -347,6 +349,14 @@ public sealed partial class MainWindow : Window
         if (sender is not Button button
             || button.Tag is not ListedMod mod)
             return;
+
+        if (mod.IsLocal)
+        {
+            MessageBox.Show(this, "Tome cannot fetch information about locally installed mods.",
+                                  "Cannot fetch details for local mod", MessageBoxButton.OK, MessageBoxImage.Error);
+
+            return;
+        }
 
         ShowModInfoSafeAsync(mod.Id, mod.Type);
     }
