@@ -67,7 +67,9 @@ public sealed class ListedMod : INotifyPropertyChanged
     public ListedModMinimal Minimal() => new(Id, Type);
 }
 
-public record ListedModMinimal(int Id, string Type);
+public sealed class ModActions : Dictionary<ListedModMinimal, ModAction>;
+
+public sealed record ListedModMinimal(int Id, string Type);
 
 public enum ModAction
 {

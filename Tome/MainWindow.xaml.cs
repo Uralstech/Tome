@@ -35,7 +35,7 @@ public sealed partial class MainWindow : Window
     private readonly SemaphoreSlim _getSemaphore = new(1, 1);
     private readonly ObservableCollection<ListedMod> _modsList = [];
 
-    private readonly Dictionary<ListedModMinimal, ModAction> _actions = [];
+    private readonly ModActions _pendingActions = [];
 
     private TomeManifest _manifest = null!;
     private MenuItem _defaultFilterMenu = null!;
@@ -289,7 +289,7 @@ public sealed partial class MainWindow : Window
     {
         SetCurrentCategory(null);
         RunModsUpdateSafe(() =>
-            _gamebanana.SearchAsync(SearchBox.Text, _manifest.DefaultFilters, _manifest));
+            _gamebanana.SearchAsync(SearchBox.Text, _manifest.DefaultFilters, _manifest, _pendingActions));
     }
 
     #endregion
@@ -304,9 +304,9 @@ public sealed partial class MainWindow : Window
         SetCurrentCategory(selectedButton);
 
         if (ReferenceEquals(sender, FeaturedButton))
-            RunModsUpdateSafe(() => _gamebanana.GetFeaturedAsync(_manifest.DefaultFilters, _manifest));
+            RunModsUpdateSafe(() => _gamebanana.GetFeaturedAsync(_manifest.DefaultFilters, _manifest, _pendingActions));
         else if (ReferenceEquals(sender, TopSubmissionsButton))
-            RunModsUpdateSafe(() => _gamebanana.GetTopSubmissionsAsync(_manifest.DefaultFilters, _manifest));
+            RunModsUpdateSafe(() => _gamebanana.GetTopSubmissionsAsync(_manifest.DefaultFilters, _manifest, _pendingActions));
     }
 
     private void SetCurrentCategory(ToggleButton? newChecked)
@@ -362,24 +362,24 @@ public sealed partial class MainWindow : Window
             ? ModAction.Install : ModAction.Delete;
 
         ListedModMinimal minimal = mod.Minimal();
-        if (_actions.TryAdd(minimal, requestedAction))
+        if (_pendingActions.TryAdd(minimal, requestedAction))
             return;
 
-        ModAction queuedAction = _actions[minimal];
-        if (queuedAction is ModAction.Update)
+        ModAction pendingAction = _pendingActions[minimal];
+        if (pendingAction is ModAction.Update)
         {
-            _actions[minimal] = requestedAction;
+            _pendingActions[minimal] = requestedAction;
             return;
         }
 
-        if ((queuedAction is ModAction.Install && requestedAction is ModAction.Delete)
-            || (queuedAction is ModAction.Delete && requestedAction is ModAction.Install))
+        if ((pendingAction is ModAction.Install && requestedAction is ModAction.Delete)
+            || (pendingAction is ModAction.Delete && requestedAction is ModAction.Install))
         {
-            _actions.Remove(minimal);
+            _pendingActions.Remove(minimal);
             return;
         }
 
-        MessageBox.Show(this, $"Unexpected queued action {queuedAction} + requested action {requestedAction}",
+        MessageBox.Show(this, $"Unexpected pending action {pendingAction} + requested action {requestedAction}",
                               "Unexpected error", MessageBoxButton.OK);
     }
 
@@ -393,10 +393,10 @@ public sealed partial class MainWindow : Window
         ListedModMinimal minimal = mod.Minimal();
 
         if (mod.Update)
-            _actions[minimal] = ModAction.Update;
-        else if (_actions.TryGetValue(minimal, out ModAction queuedAction)
-            && queuedAction == ModAction.Update)
-            _actions.Remove(minimal);
+            _pendingActions[minimal] = ModAction.Update;
+        else if (_pendingActions.TryGetValue(minimal, out ModAction pendingAction)
+            && pendingAction == ModAction.Update)
+            _pendingActions.Remove(minimal);
     }
 
     private async void ShowModInfoSafeAsync(int id, string type)
