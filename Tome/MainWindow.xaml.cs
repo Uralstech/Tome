@@ -1,4 +1,18 @@
-﻿using GamebananaAPI.Data.Submission;
+﻿// Copyright 2026 URAV ADVANCED LEARNING SYSTEMS PRIVATE LIMITED
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using GamebananaAPI.Data.Submission;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -13,11 +27,11 @@ namespace Tome;
 
 public sealed partial class MainWindow : Window
 {
-    private readonly SemaphoreSlim _getSemaphore = new(1, 1);
-
     private readonly FileService _files;
     private readonly DeadlockService _deadlock;
     private readonly GamebananaService _gamebanana;
+
+    private readonly SemaphoreSlim _getSemaphore = new(1, 1);
     private readonly ObservableCollection<ListedMod> _mods = [];
 
     private MenuItem _defaultFilterMenu = null!;

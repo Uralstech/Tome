@@ -1,4 +1,18 @@
-﻿using GamebananaAPI;
+﻿// Copyright 2026 URAV ADVANCED LEARNING SYSTEMS PRIVATE LIMITED
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using GamebananaAPI;
 using GamebananaAPI.Data;
 using GamebananaAPI.Data.Categories;
 using GamebananaAPI.Data.Game.Featured;
@@ -24,13 +38,15 @@ public sealed class GamebananaService : IDisposable
 
     private readonly MemoryCache _cache = new(new MemoryCacheOptions());
 
+    #region Categories
+
     public async Task<IReadOnlyDictionary<string, TopLevelCategoryDefinition>> GetTopLevelCategoryDefinitionsAsync()
     {
         static string GetCacheKey() => "topLevelCategoryDefinitions";
 
-        if (_cache.TryGetValue(GetCacheKey(), out object? cachedVal)
-            && cachedVal is IReadOnlyDictionary<string, TopLevelCategoryDefinition> cachedCategoryDefinitions)
-            return cachedCategoryDefinitions;
+        if (_cache.TryGetValue(GetCacheKey(),
+            out IReadOnlyDictionary<string, TopLevelCategoryDefinition>? cachedCategoryDefinitions))
+            return cachedCategoryDefinitions!;
 
         List<TopLevelCategoryDefinition> flatCategoryDefinitions = await Gamebanana.Games.Category.GetCategoryDefinitionsAsync(DeadlockGameId);
         Dictionary<string, TopLevelCategoryDefinition> categoryDefinitions = new(flatCategoryDefinitions.Count);
@@ -61,9 +77,9 @@ public sealed class GamebananaService : IDisposable
                 AddCategoriesRecursive(dict, childCategoryDefinition);
         }
 
-        if (_cache.TryGetValue(GetCacheKey(), out object? cachedVal)
-            && cachedVal is IReadOnlyDictionary<int, CategoryDefinition> cachedCategoryDefinitions)
-            return cachedCategoryDefinitions;
+        if (_cache.TryGetValue(GetCacheKey(),
+            out IReadOnlyDictionary<int, CategoryDefinition>? cachedCategoryDefinitions))
+            return cachedCategoryDefinitions!;
 
         List<CategoryDefinition> categoryDefinitions = await Gamebanana.Category.GetCategoryDefinitionsAsync(categoryType, DeadlockGameId);
         Dictionary<int, CategoryDefinition> flatCategoryDefinitions = [];
@@ -75,20 +91,27 @@ public sealed class GamebananaService : IDisposable
         return flatCategoryDefinitions;
     }
 
+    #endregion
+
+    #region Submissions
+
     public async Task<SubmissionProfile> GetSubmissionAsync(int id, string type)
     {
         string GetCacheKey() => $"submissionProfile:{id}";
 
-        if (!_cache.TryGetValue(GetCacheKey(), out object? cachedVal)
-            || cachedVal is not SubmissionProfile profile)
+        if (!_cache.TryGetValue(GetCacheKey(), out SubmissionProfile? profile))
         {
             profile = await Gamebanana.Submission.PropertiesAsync(id, type);
             _cache.Set(GetCacheKey(), profile, s_submissionCacheTime);
         }
 
-        return profile.Files is { Count: > 0 }
+        return profile!.Files is { Count: > 0 }
             ? profile : throw new InvalidOperationException("Cannot use mod with no listed files.");
     }
+
+    #endregion
+
+    #region Search/Listings
 
     public async Task<IReadOnlyList<ListedMod>> SearchAsync(string unformattedQuery, Visibility defaultVisibility)
     {
@@ -171,9 +194,8 @@ public sealed class GamebananaService : IDisposable
 
         string GetCacheKey() => $"search:{queryText}:{sort}:{includeTypes}:{excludeTypes}:{visibility}";
 
-        if (_cache.TryGetValue(GetCacheKey(), out object? cachedVal)
-            && cachedVal is IReadOnlyList<ListedMod> cachedMods)
-            return cachedMods;
+        if (_cache.TryGetValue(GetCacheKey(), out IReadOnlyList<ListedMod>? cachedMods))
+            return cachedMods!;
 
         SearchSubmissions submissions = await Gamebanana.Games.Search.SearchAsync(DeadlockGameId, queryText,
             sort, includeTypes, excludeTypes);
@@ -204,7 +226,7 @@ public sealed class GamebananaService : IDisposable
         if (splitIndex < 1 || splitIndex != path.LastIndexOf('/'))
             throw new ArgumentException("Invalid submission link.");
 
-        string type = string.Empty;
+        string type;
         string uriType = path[..splitIndex];
 
         if (uriType.CompareTo("sounds", StringComparison.InvariantCultureIgnoreCase) == 0)
@@ -244,9 +266,8 @@ public sealed class GamebananaService : IDisposable
 
         string GetCacheKey() => $"topSubmissions:{defaultVisibility}";
 
-        if (_cache.TryGetValue(GetCacheKey(), out object? cachedVal)
-            && cachedVal is IReadOnlyList<ListedMod> cachedMods)
-            return cachedMods;
+        if (_cache.TryGetValue(GetCacheKey(), out IReadOnlyList<ListedMod>? cachedMods))
+            return cachedMods!;
 
         List<TopSubmission> top = await Gamebanana.Games.Search.TopSubmissionsAsync(DeadlockGameId);
         ListedMod[] mods = top
@@ -277,17 +298,16 @@ public sealed class GamebananaService : IDisposable
 
         string GetCacheKey() => $"featured:{defaultVisibility}";
 
-        if (_cache.TryGetValue(GetCacheKey(), out object? cachedVal)
-            && cachedVal is IReadOnlyList<ListedMod> cachedMods)
-            return cachedMods;
+        if (_cache.TryGetValue(GetCacheKey(), out IReadOnlyList<ListedMod>? cachedMods))
+            return cachedMods!;
 
         FeaturedSubmissions featured = await Gamebanana.Games.Search.FeaturedAsync(DeadlockGameId);
         ListedMod[] mods = featured.Submissions
             .OrderBy(static sub =>
-                sub.Featurings.OrderBy(static feat => GetPriority(feat.Group))
+                GetPriority(sub.Featurings
+                .OrderBy(static feat => GetPriority(feat.Group))
                 .ThenByDescending(static feat => feat.Date)
-                .Select(static feat => GetPriority(feat.Group))
-                .FirstOrDefault(int.MaxValue))
+                .FirstOrDefault()?.Group ?? (FeaturingGroup)int.MaxValue))
             .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)defaultVisibility && sub.HasFiles)
             .Select(static sub => new ListedMod()
             {
@@ -302,6 +322,8 @@ public sealed class GamebananaService : IDisposable
         _cache.Set(GetCacheKey(), mods, s_featuredCacheTime);
         return mods;
     }
+
+    #endregion
 
     public void Dispose() => _cache.Dispose();
 }
