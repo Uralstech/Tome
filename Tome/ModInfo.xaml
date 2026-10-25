@@ -69,7 +69,8 @@ limitations under the License.
 
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsObsolete}" Value="True">
-                                        <Setter Property="Text" Value="{Binding Name, StringFormat='&lt;OBSOLETE&gt; {0}'}"/>
+                                        <Setter Property="ToolTip" Value="This mod has been marked obsolete by the author."/>
+                                        <Setter Property="Foreground" Value="Red"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>

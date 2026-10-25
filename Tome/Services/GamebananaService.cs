@@ -159,7 +159,8 @@ public sealed class GamebananaService : IDisposable
                         Type = type,
                         Name = submission.Name,
                         Likes = submission.Likes,
-                        Author = submission.Author.Name
+                        Author = submission.Author.Name,
+                        IsObsolete = submission.IsObsolete,
                     }];
 
                 case "$link":
@@ -206,10 +207,10 @@ public sealed class GamebananaService : IDisposable
             {
                 Id = sub.Id,
                 Type = sub.Type,
-                Name = sub.IsObsolete
-                    ? "<OBSOLETE> " + sub.Name : sub.Name,
+                Name = sub.Name,
                 Likes = sub.Likes,
-                Author = sub.Author.Name
+                Author = sub.Author.Name,
+                IsObsolete = sub.IsObsolete,
             }).ToArray();
 
         _cache.Set(GetCacheKey(), mods, s_searchCacheTime);
@@ -246,7 +247,8 @@ public sealed class GamebananaService : IDisposable
                     Type = type,
                     Name = submission.Name,
                     Likes = submission.Likes,
-                    Author = submission.Author.Name
+                    Author = submission.Author.Name,
+                    IsObsolete = submission.IsObsolete,
                 }];
     }
 
@@ -279,7 +281,8 @@ public sealed class GamebananaService : IDisposable
                 Type = sub.Type,
                 Name = sub.Name,
                 Likes = sub.Likes,
-                Author = sub.Author.Name
+                Author = sub.Author.Name,
+                IsObsolete = false,
             }).ToArray();
 
         _cache.Set(GetCacheKey(), mods, s_topSubmissionsCacheTime);
@@ -313,10 +316,10 @@ public sealed class GamebananaService : IDisposable
             {
                 Id = sub.Id,
                 Type = sub.Type,
-                Name = sub.IsObsolete
-                    ? "<OBSOLETE> " + sub.Name : sub.Name,
+                Name = sub.Name,
                 Likes = sub.Likes,
-                Author = sub.Author.Name
+                Author = sub.Author.Name,
+                IsObsolete = sub.IsObsolete,
             }).ToArray();
 
         _cache.Set(GetCacheKey(), mods, s_featuredCacheTime);

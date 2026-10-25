@@ -91,7 +91,19 @@ limitations under the License.
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Likes" Binding="{Binding Likes}" Width="40" IsReadOnly="True"/>
                     <DataGridTextColumn Header="Author" Binding="{Binding Author}" Width="85" IsReadOnly="True" ElementStyle="{StaticResource EllipsisTextBlockStyle}"/>
-                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="True" ElementStyle="{StaticResource EllipsisTextBlockStyle}"/>
+                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="True">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style BasedOn="{StaticResource EllipsisTextBlockStyle}"
+                                   TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsObsolete}" Value="True">
+                                        <Setter Property="ToolTip" Value="This mod has been marked obsolete by the author."/>
+                                        <Setter Property="Foreground" Value="Red"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
                     <DataGridTemplateColumn Header="Installed" Width="55">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
