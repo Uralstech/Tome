@@ -113,7 +113,8 @@ public sealed class GamebananaService : IDisposable
 
     #region Search/Listings
 
-    public async Task<IReadOnlyList<ListedMod>> SearchAsync(string unformattedQuery, Visibility defaultVisibility)
+    public async Task<IReadOnlyList<ListedMod>> SearchAsync(string unformattedQuery,
+        Visibility defaultVisibility, TomeManifest manifest)
     {
         string[] parts = unformattedQuery.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         StringBuilder query = new();
@@ -161,10 +162,12 @@ public sealed class GamebananaService : IDisposable
                         Likes = submission.Likes,
                         Author = submission.Author.Name,
                         IsObsolete = submission.IsObsolete,
+                        Installed = manifest.Mods.ContainsKey(submission.Id),
+                        HasUpdate = false // TODO!!
                     }];
 
                 case "$link":
-                    return await ParseLinkAsync(param);
+                    return await ParseLinkAsync(param, manifest);
 
                 case "$sort":
                     sort = param; break;
@@ -203,7 +206,7 @@ public sealed class GamebananaService : IDisposable
 
         ListedMod[] mods = submissions.Submissions
             .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)visibility && sub.HasFiles)
-            .Select(static sub => new ListedMod()
+            .Select(sub => new ListedMod()
             {
                 Id = sub.Id,
                 Type = sub.Type,
@@ -211,13 +214,15 @@ public sealed class GamebananaService : IDisposable
                 Likes = sub.Likes,
                 Author = sub.Author.Name,
                 IsObsolete = sub.IsObsolete,
+                Installed = manifest.Mods.ContainsKey(sub.Id),
+                HasUpdate = false // TODO!!
             }).ToArray();
 
         _cache.Set(GetCacheKey(), mods, s_searchCacheTime);
         return mods;
     }
 
-    public async Task<IReadOnlyList<ListedMod>> ParseLinkAsync(string link)
+    public async Task<IReadOnlyList<ListedMod>> ParseLinkAsync(string link, TomeManifest manifest)
     {
         if (!Uri.TryCreate(link, UriKind.Absolute, out Uri? uri))
             throw new ArgumentException("Invalid submission link.");
@@ -249,10 +254,12 @@ public sealed class GamebananaService : IDisposable
                     Likes = submission.Likes,
                     Author = submission.Author.Name,
                     IsObsolete = submission.IsObsolete,
+                    Installed = manifest.Mods.ContainsKey(submission.Id),
+                    HasUpdate = false // TODO!!
                 }];
     }
 
-    public async Task<IReadOnlyList<ListedMod>> GetTopSubmissionsAsync(Visibility defaultVisibility)
+    public async Task<IReadOnlyList<ListedMod>> GetTopSubmissionsAsync(Visibility defaultVisibility, TomeManifest manifest)
     {
         static int GetPriority(TopSubmissionPeriod group) => group switch
         {
@@ -275,7 +282,7 @@ public sealed class GamebananaService : IDisposable
         ListedMod[] mods = top
             .OrderBy(static sub => GetPriority(sub.Period))
             .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)defaultVisibility)
-            .Select(static sub => new ListedMod()
+            .Select(sub => new ListedMod()
             {
                 Id = sub.Id,
                 Type = sub.Type,
@@ -283,13 +290,15 @@ public sealed class GamebananaService : IDisposable
                 Likes = sub.Likes,
                 Author = sub.Author.Name,
                 IsObsolete = false,
+                Installed = manifest.Mods.ContainsKey(sub.Id),
+                HasUpdate = false // TODO!!
             }).ToArray();
 
         _cache.Set(GetCacheKey(), mods, s_topSubmissionsCacheTime);
         return mods;
     }
 
-    public async Task<IReadOnlyList<ListedMod>> GetFeaturedAsync(Visibility defaultVisibility)
+    public async Task<IReadOnlyList<ListedMod>> GetFeaturedAsync(Visibility defaultVisibility, TomeManifest manifest)
     {
         static int GetPriority(FeaturingGroup group) => group switch
         {
@@ -312,7 +321,7 @@ public sealed class GamebananaService : IDisposable
                 .ThenByDescending(static feat => feat.Date)
                 .FirstOrDefault()?.Group ?? (FeaturingGroup)int.MaxValue))
             .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)defaultVisibility && sub.HasFiles)
-            .Select(static sub => new ListedMod()
+            .Select(sub => new ListedMod()
             {
                 Id = sub.Id,
                 Type = sub.Type,
@@ -320,6 +329,8 @@ public sealed class GamebananaService : IDisposable
                 Likes = sub.Likes,
                 Author = sub.Author.Name,
                 IsObsolete = sub.IsObsolete,
+                Installed = manifest.Mods.ContainsKey(sub.Id),
+                HasUpdate = false // TODO!!
             }).ToArray();
 
         _cache.Set(GetCacheKey(), mods, s_featuredCacheTime);

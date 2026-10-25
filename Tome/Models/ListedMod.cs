@@ -26,7 +26,7 @@ public sealed class ListedMod : INotifyPropertyChanged
     public required bool IsObsolete { get; init; }
     public required int Likes { get; init; }
 
-    public bool Installed
+    public required bool Installed
     {
         get;
         set
@@ -34,7 +34,9 @@ public sealed class ListedMod : INotifyPropertyChanged
             if (field == value)
                 return;
 
-            field = value;
+            if (!(field = value))
+                Update = false;
+
             OnPropertyChanged();
             OnPropertyChanged(nameof(CanUpdate));
         }
@@ -53,19 +55,7 @@ public sealed class ListedMod : INotifyPropertyChanged
         }
     }
 
-    public bool HasUpdate
-    {
-        get;
-        set
-        {
-            if (value == field)
-                return;
-
-            field = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(CanUpdate));
-        }
-    }
+    public required bool HasUpdate { get; init; }
 
     public bool CanUpdate => Installed && HasUpdate;
 
@@ -73,4 +63,15 @@ public sealed class ListedMod : INotifyPropertyChanged
 
     private void OnPropertyChanged([CallerMemberName] string propertyName = "") =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    public ListedModMinimal Minimal() => new(Id, Type);
+}
+
+public record ListedModMinimal(int Id, string Type);
+
+public enum ModAction
+{
+    Install,
+    Update,
+    Delete,
 }

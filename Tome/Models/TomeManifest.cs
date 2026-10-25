@@ -32,19 +32,9 @@ public sealed class TomeManifest
     [JsonPropertyName("defaultFilters")]
     public Visibility DefaultFilters { get; set; } = Visibility.Show;
 
-    /// <summary>Installed skins where the key is the ritualist category ID (eg. 42671 for Silver, 49631 for Violet).</summary>
-    /// <remarks>Since each ritualist can have multiple mods (eg. recolor mod + 3D model mod), the dictionary value is a list.</remarks>
-    [JsonPropertyName("skins")]
-    public Dictionary<int, List<InstalledMod>> Skins { get; set; } = [];
-
-    /// <summary>Installed model replacements where the key is the model replacement (sub-)category ID (eg. 41651 for breakables, 44687 for troopers).</summary>
-    /// <remarks>Since each category can have multiple mods (eg. hidden king mod + archmother mod, both under the "patron" sub-category), the dictionary value is a list.</remarks>
-    [JsonPropertyName("modelReplacements")]
-    public Dictionary<int, List<InstalledMod>> ModelReplacements { get; set; } = [];
-
-    /// <summary>Any mods that aren't skins or model replacements, and likely don't conflict with each other.</summary>
-    [JsonPropertyName("misc")]
-    public List<InstalledMod> Misc { get; set; } = [];
+    /// <summary>All installed mods, keyed by an ID (can be the Gamebanana submission ID or a random value for a local mod).</summary>
+    [JsonPropertyName("mods")]
+    public Dictionary<int, InstalledMod> Mods { get; set; } = [];
 }
 
 /// <summary>Entry for an installed mod.</summary>
@@ -83,7 +73,7 @@ public sealed class GamebananaMetadata
 
     /// <summary>The full Gamebanana submission category (ID) tree.</summary>
     [JsonPropertyName("submissionCategoryTree")]
-    public required IReadOnlyList<int> SubmissionCategoryTree { get; set; }
+    public required List<int> SubmissionCategoryTree { get; set; }
 
     /// <summary>The Gamebanana file ID.</summary>
     [JsonPropertyName("fileId")]

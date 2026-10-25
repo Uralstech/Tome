@@ -45,10 +45,6 @@ public sealed class DeadlockService(FileService fileService)
 
     public bool VerifyManifest(TomeManifest manifest, [NotNullWhen(false)] out ManifestVerificationFailures? failures)
     {
-        IEnumerable<InstalledMod> allMods = manifest.Skins.Values.Concat(
-            manifest.ModelReplacements.Values
-        ).Append(manifest.Misc).SelectMany(static mod => mod);
-
         string safeAddonsPath = GetAddonsPath(manifest.GamePath);
         if (!Path.EndsInDirectorySeparator(safeAddonsPath))
             safeAddonsPath += Path.DirectorySeparatorChar;
@@ -57,7 +53,7 @@ public sealed class DeadlockService(FileService fileService)
 
         HashSet<string> allModPathsRelative = [];
         Dictionary<string, string> problematicMods = [];
-        foreach (InstalledMod mod in allMods)
+        foreach ((_, InstalledMod mod) in manifest.Mods)
         {
             allModPathsRelative.Add(mod.RelativePath);
 
@@ -129,12 +125,11 @@ public sealed class DeadlockService(FileService fileService)
                     filesToDelete.Add(absoluteModPath);
             }
 
-            IEnumerable<List<InstalledMod>> allModsLists = manifest.Skins.Values.Concat(
-                manifest.ModelReplacements.Values
-            ).Append(manifest.Misc);
-
-            foreach (List<InstalledMod> modsList in allModsLists)
-                modsList.RemoveAll(mod => problematicModPathsRelative.Contains(mod.RelativePath));
+            foreach ((int key, InstalledMod mod) in new List<KeyValuePair<int, InstalledMod>>(manifest.Mods))
+            {
+                if (problematicModPathsRelative.Contains(mod.RelativePath))
+                    manifest.Mods.Remove(key);
+            }
         }
 
         foreach (string fileToDelete in filesToDelete)

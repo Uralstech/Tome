@@ -35,6 +35,8 @@ public sealed partial class MainWindow : Window
     private readonly SemaphoreSlim _getSemaphore = new(1, 1);
     private readonly ObservableCollection<ListedMod> _modsList = [];
 
+    private readonly Dictionary<ListedModMinimal, ModAction> _actions = [];
+
     private TomeManifest _manifest = null!;
     private MenuItem _defaultFilterMenu = null!;
     private ToggleButton? _currentCategory = null;
@@ -227,7 +229,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (_manifest.Skins.Count + _manifest.ModelReplacements.Count + _manifest.Misc.Count > 0)
+        if (_manifest.Mods.Count > 0)
         {
             MessageBoxResult result = MessageBox.Show(this, "The mods list managed by Tome will be cleared when switching to a different Deadlock installation.",
                                                             "Clear mods list?", MessageBoxButton.YesNo);
@@ -235,9 +237,7 @@ public sealed partial class MainWindow : Window
             if (result == MessageBoxResult.No)
                 return;
 
-            _manifest.Skins.Clear();
-            _manifest.ModelReplacements.Clear();
-            _manifest.Misc.Clear();
+            _manifest.Mods.Clear();
         }
 
         _manifest.GamePath = deadlockPath;
@@ -289,7 +289,7 @@ public sealed partial class MainWindow : Window
     {
         SetCurrentCategory(null);
         RunModsUpdateSafe(() =>
-            _gamebanana.SearchAsync(SearchBox.Text, _manifest.DefaultFilters));
+            _gamebanana.SearchAsync(SearchBox.Text, _manifest.DefaultFilters, _manifest));
     }
 
     #endregion
@@ -304,9 +304,9 @@ public sealed partial class MainWindow : Window
         SetCurrentCategory(selectedButton);
 
         if (ReferenceEquals(sender, FeaturedButton))
-            RunModsUpdateSafe(() => _gamebanana.GetFeaturedAsync(_manifest.DefaultFilters));
+            RunModsUpdateSafe(() => _gamebanana.GetFeaturedAsync(_manifest.DefaultFilters, _manifest));
         else if (ReferenceEquals(sender, TopSubmissionsButton))
-            RunModsUpdateSafe(() => _gamebanana.GetTopSubmissionsAsync(_manifest.DefaultFilters));
+            RunModsUpdateSafe(() => _gamebanana.GetTopSubmissionsAsync(_manifest.DefaultFilters, _manifest));
     }
 
     private void SetCurrentCategory(ToggleButton? newChecked)
@@ -349,6 +349,45 @@ public sealed partial class MainWindow : Window
             return;
 
         ShowModInfoSafeAsync(mod.Id, mod.Type);
+    }
+
+    private void InstallToggle_Checked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not CheckBox checkbox
+            || checkbox.Tag is not ListedMod mod)
+            return;
+
+        mod.Installed = checkbox.IsChecked ?? false;
+        ModAction requestedAction = mod.Installed
+            ? ModAction.Install : ModAction.Delete;
+
+        ListedModMinimal minimal = mod.Minimal();
+        if (_actions.TryAdd(minimal, requestedAction))
+            return;
+
+        ModAction queuedAction = _actions[minimal];
+        if (queuedAction is ModAction.Update)
+        {
+            _actions[minimal] = requestedAction;
+            return;
+        }
+
+        if ((queuedAction is ModAction.Install && requestedAction is ModAction.Delete)
+            || (queuedAction is ModAction.Delete && requestedAction is ModAction.Install))
+        {
+            _actions.Remove(minimal);
+            return;
+        }
+
+        MessageBox.Show(this, $"Unexpected queued action {queuedAction} + requested action {requestedAction}",
+                              "Unexpected error", MessageBoxButton.OK);
+    }
+
+    private void UpdateToggle_Checked(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox checkbox
+            && checkbox.Tag is ListedMod mod)
+            _actions[mod.Minimal()] = ModAction.Update;
     }
 
     private async void ShowModInfoSafeAsync(int id, string type)
