@@ -66,11 +66,12 @@ public sealed partial class MainWindow : Window
             MessageBox.Show(this, $"Deadlock successfully detected at: {deadlockPath}", "Deadlock found", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        manifest = new InstallationsManifest()
+        manifest ??= new InstallationsManifest()
         {
             GamePath = deadlockPath
         };
 
+        manifest.GamePath = deadlockPath;
         _files.SaveManifest(manifest);
         _installations = manifest;
         return true;
@@ -82,11 +83,12 @@ public sealed partial class MainWindow : Window
             return;
 
         MessageBoxResult result = MessageBox.Show(this, $"Multiple warnings while verifying mod list:\n- {string.Join("\n- ", failures.ProblematicMods.Values)}" +
-                                                        $"\nThis may cause incorrect mod loading and create conflicts. Delete all problematic mods?",
+                                                        $"\n\nThis may cause incorrect mod loading and create conflicts. Delete all problematic mods? " +
+                                                        $"Problematic mods detected to be *outside* of the game's managed \\addons directory will not be deleted.",
                                                         "Failed mod list verification", MessageBoxButton.YesNo, MessageBoxImage.Error);
 
         if (result == MessageBoxResult.Yes)
-            result = MessageBox.Show(this, "All problematic mods installed with your Deadlock installation will be deleted, " +
+            result = MessageBox.Show(this, $"All problematic mods installed in '{_deadlock.GetAddonsPath(_installations.GamePath)}' will be deleted, " +
                                            "after being backed up. Continue?", "Are you sure?", MessageBoxButton.YesNo, MessageBoxImage.Stop);
 
         if (result != MessageBoxResult.Yes)

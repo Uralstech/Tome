@@ -38,7 +38,11 @@ public sealed class DeadlockService(FileService fileService)
 
     public void ClearManifestFailures(InstallationsManifest manifest, ManifestVerificationFailures failures, string backupZip)
     {
-        string addons = GetAddonsPath(manifest.GamePath);
+        string safeAddonsPath = GetAddonsPath(manifest.GamePath);
+        if (!Path.EndsInDirectorySeparator(safeAddonsPath))
+            safeAddonsPath += Path.DirectorySeparatorChar;
+
+        Uri baseUri = new(safeAddonsPath);
         HashSet<string> filesToDelete = [];
 
         using (FileStream zipToOpen = new(backupZip, FileMode.Create))
@@ -47,14 +51,16 @@ public sealed class DeadlockService(FileService fileService)
             HashSet<string> problematicModPathsRelative = [.. failures.ProblematicMods.Keys];
             foreach (string problematicModPathRelative in problematicModPathsRelative)
             {
-                string absoluteModPath = Path.Combine(addons, problematicModPathRelative);
+                string absoluteModPath = Path.GetFullPath(Path.Combine(safeAddonsPath, problematicModPathRelative));
                 if (!File.Exists(absoluteModPath))
                     continue;
 
                 string modFileName = Path.GetFileName(absoluteModPath);
                 string modPathInZip = Path.Combine("addons", modFileName);
                 archive.CreateEntryFromFile(absoluteModPath, modPathInZip);
-                filesToDelete.Add(absoluteModPath);
+
+                if (baseUri.IsBaseOf(new Uri(absoluteModPath)))
+                    filesToDelete.Add(absoluteModPath);
             }
 
             IEnumerable<List<InstalledMod>> allModsLists = manifest.Skins.Values.Concat(
@@ -89,7 +95,13 @@ public sealed class DeadlockService(FileService fileService)
         {
             allModPathsRelative.Add(mod.RelativePath);
 
-            string absoluteModPath = Path.Combine(safeAddonsPath, mod.RelativePath);
+            string absoluteModPath = Path.GetFullPath(Path.Combine(safeAddonsPath, mod.RelativePath));
+            if (!baseUri.IsBaseOf(new Uri(absoluteModPath)))
+            {
+                problematicMods.TryAdd(mod.RelativePath, $"'{mod.ListingMetadata?.Name ?? mod.RelativePath}' is outside {safeAddonsPath}");
+                continue;
+            }
+
             if (!File.Exists(absoluteModPath))
             {
                 problematicMods.TryAdd(mod.RelativePath, $"'{mod.ListingMetadata?.Name ?? ""}' is missing at path: {absoluteModPath}");
