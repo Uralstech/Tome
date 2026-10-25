@@ -385,9 +385,18 @@ public sealed partial class MainWindow : Window
 
     private void UpdateToggle_Checked(object sender, RoutedEventArgs e)
     {
-        if (sender is CheckBox checkbox
-            && checkbox.Tag is ListedMod mod)
-            _actions[mod.Minimal()] = ModAction.Update;
+        if (sender is not CheckBox checkbox
+            || checkbox.Tag is not ListedMod mod)
+            return;
+
+        mod.Update = checkbox.IsChecked ?? false;
+        ListedModMinimal minimal = mod.Minimal();
+
+        if (mod.Update)
+            _actions[minimal] = ModAction.Update;
+        else if (_actions.TryGetValue(minimal out ModAction queuedAction)
+            && queuedAction == ModAction.Update)
+            _actions.Remove(minimal);
     }
 
     private async void ShowModInfoSafeAsync(int id, string type)
