@@ -108,8 +108,7 @@ limitations under the License.
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <CheckBox IsChecked="{Binding Installed, UpdateSourceTrigger=PropertyChanged}" Tag="{Binding}"
-                                          Checked="InstallToggle_Checked" Unchecked="InstallToggle_Checked"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                          Click="InstallToggle_Click" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -118,8 +117,7 @@ limitations under the License.
                             <DataTemplate>
                                 <CheckBox IsChecked="{Binding Update, UpdateSourceTrigger=PropertyChanged}" Tag="{Binding}"
                                           IsEnabled="{Binding CanUpdate, UpdateSourceTrigger=PropertyChanged}"
-                                          Checked="UpdateToggle_Checked" Unchecked="UpdateToggle_Checked"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                          Click="UpdateToggle_Click" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

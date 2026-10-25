@@ -351,7 +351,7 @@ public sealed partial class MainWindow : Window
         ShowModInfoSafeAsync(mod.Id, mod.Type);
     }
 
-    private void InstallToggle_Checked(object sender, RoutedEventArgs e)
+    private void InstallToggle_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not CheckBox checkbox
             || checkbox.Tag is not ListedMod mod)
@@ -383,7 +383,7 @@ public sealed partial class MainWindow : Window
                               "Unexpected error", MessageBoxButton.OK);
     }
 
-    private void UpdateToggle_Checked(object sender, RoutedEventArgs e)
+    private void UpdateToggle_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not CheckBox checkbox
             || checkbox.Tag is not ListedMod mod)
