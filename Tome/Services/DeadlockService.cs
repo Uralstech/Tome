@@ -47,49 +47,7 @@ public sealed class DeadlockService(FileService fileService)
         return directory;
     }
 
-    public string GetGameInfoPath(string basePath) =>
-        Path.Combine(basePath, "game\\citadel\\gameinfo.gi");
-
-    public void ClearManifestFailures(TomeManifest manifest, ManifestVerificationFailures failures, string backupZip)
-    {
-        string safeAddonsPath = GetAddonsPath(manifest.GamePath);
-        if (!Path.EndsInDirectorySeparator(safeAddonsPath))
-            safeAddonsPath += Path.DirectorySeparatorChar;
-
-        Uri baseUri = new(safeAddonsPath);
-        HashSet<string> filesToDelete = [];
-
-        using (FileStream zipToOpen = new(backupZip, FileMode.Create))
-        using (ZipArchive archive = new(zipToOpen, ZipArchiveMode.Create))
-        {
-            HashSet<string> problematicModPathsRelative = [.. failures.ProblematicMods.Keys];
-            foreach (string problematicModPathRelative in problematicModPathsRelative)
-            {
-                string absoluteModPath = Path.GetFullPath(Path.Combine(safeAddonsPath, problematicModPathRelative));
-                if (!File.Exists(absoluteModPath))
-                    continue;
-
-                string modFileName = Path.GetFileName(absoluteModPath);
-                string modPathInZip = Path.Combine("addons", modFileName);
-                archive.CreateEntryFromFile(absoluteModPath, modPathInZip);
-
-                if (baseUri.IsBaseOf(new Uri(absoluteModPath)))
-                    filesToDelete.Add(absoluteModPath);
-            }
-
-            IEnumerable<List<InstalledMod>> allModsLists = manifest.Skins.Values.Concat(
-                manifest.ModelReplacements.Values
-            ).Append(manifest.Misc);
-
-            foreach (List<InstalledMod> modsList in allModsLists)
-                modsList.RemoveAll(mod => problematicModPathsRelative.Contains(mod.RelativePath));
-        }
-
-        foreach (string fileToDelete in filesToDelete)
-            File.Delete(fileToDelete);
-
-        _fileService.SaveManifest(manifest);
-    }
+    #region Manifest Verification
 
     public bool VerifyManifest(TomeManifest manifest, [NotNullWhen(false)] out ManifestVerificationFailures? failures)
     {
@@ -149,6 +107,54 @@ public sealed class DeadlockService(FileService fileService)
         failures = null;
         return true;
     }
+
+    public void ClearManifestFailures(TomeManifest manifest, ManifestVerificationFailures failures, string backupZip)
+    {
+        string safeAddonsPath = GetAddonsPath(manifest.GamePath);
+        if (!Path.EndsInDirectorySeparator(safeAddonsPath))
+            safeAddonsPath += Path.DirectorySeparatorChar;
+
+        Uri baseUri = new(safeAddonsPath);
+        HashSet<string> filesToDelete = [];
+
+        using (FileStream zipToOpen = new(backupZip, FileMode.Create))
+        using (ZipArchive archive = new(zipToOpen, ZipArchiveMode.Create))
+        {
+            HashSet<string> problematicModPathsRelative = [.. failures.ProblematicMods.Keys];
+            foreach (string problematicModPathRelative in problematicModPathsRelative)
+            {
+                string absoluteModPath = Path.GetFullPath(Path.Combine(safeAddonsPath, problematicModPathRelative));
+                if (!File.Exists(absoluteModPath))
+                    continue;
+
+                string modFileName = Path.GetFileName(absoluteModPath);
+                string modPathInZip = Path.Combine("addons", modFileName);
+                archive.CreateEntryFromFile(absoluteModPath, modPathInZip);
+
+                if (baseUri.IsBaseOf(new Uri(absoluteModPath)))
+                    filesToDelete.Add(absoluteModPath);
+            }
+
+            IEnumerable<List<InstalledMod>> allModsLists = manifest.Skins.Values.Concat(
+                manifest.ModelReplacements.Values
+            ).Append(manifest.Misc);
+
+            foreach (List<InstalledMod> modsList in allModsLists)
+                modsList.RemoveAll(mod => problematicModPathsRelative.Contains(mod.RelativePath));
+        }
+
+        foreach (string fileToDelete in filesToDelete)
+            File.Delete(fileToDelete);
+
+        _fileService.SaveManifest(manifest);
+    }
+
+    #endregion
+
+    #region GameInfo Management
+
+    public string GetGameInfoPath(string basePath) =>
+        Path.Combine(basePath, "game\\citadel\\gameinfo.gi");
 
     public void RestoreGameInfo(string path)
     {
@@ -282,31 +288,9 @@ public sealed class DeadlockService(FileService fileService)
         }
     }
 
-    public bool VerifyDeadlockInstallation([NotNullWhen(true)] string? path)
-    {
-        try
-        {
-            if (!Directory.Exists(path))
-                return false;
+    #endregion
 
-            string file = GetGameInfoPath(path);
-            if (!File.Exists(file))
-                return false;
-
-            KVDocument document;
-            using (FileStream input = File.OpenRead(file))
-                document = s_kv1Serializer.Deserialize(input);
-
-            return document.Name == "GameInfo"
-                && document.Root.TryGetValue("game", out KVObject? game)
-                && game.ToString() == "citadel";
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Exception while verifying Deadlock: {ex}");
-            return false;
-        }
-    }
+    #region Deadlock Install Management
 
     public bool TryGetDeadlockPath([NotNullWhen(true)] out string? path)
     {
@@ -368,4 +352,32 @@ public sealed class DeadlockService(FileService fileService)
 
         return false;
     }
+
+    public bool VerifyDeadlockInstallation([NotNullWhen(true)] string? path)
+    {
+        try
+        {
+            if (!Directory.Exists(path))
+                return false;
+
+            string file = GetGameInfoPath(path);
+            if (!File.Exists(file))
+                return false;
+
+            KVDocument document;
+            using (FileStream input = File.OpenRead(file))
+                document = s_kv1Serializer.Deserialize(input);
+
+            return document.Name == "GameInfo"
+                && document.Root.TryGetValue("game", out KVObject? game)
+                && game.ToString() == "citadel";
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Exception while verifying Deadlock: {ex}");
+            return false;
+        }
+    }
+
+    #endregion
 }

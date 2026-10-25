@@ -22,20 +22,20 @@ namespace Tome.Services;
 
 public sealed class FileService
 {
-    private static string GetAppDataDirectory() =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Uralstech", "Tome");
-
-    private static string GetIinstallationsManifestPath() =>
-        Path.Combine(GetAppDataDirectory(), "tomeManifest.json");
-
-    public string GetSaveDirectory()
+    private static string GetAppDataDirectory()
     {
-        string path = GetAppDataDirectory();
+        string localAppData = Environment.GetFolderPath(
+            Environment.SpecialFolder.LocalApplicationData);
+
+        string path = Path.Combine(localAppData, "Uralstech", "Tome");
         Directory.CreateDirectory(path);
         return path;
     }
+
+    private static string GetInstallationsManifestPath() =>
+        Path.Combine(GetAppDataDirectory(), "tomeManifest.json");
+
+    public string GetSaveDirectory() => GetAppDataDirectory();
 
     public bool TryGetManifest([NotNullWhen(true)] out TomeManifest? manifest)
     {
@@ -43,7 +43,7 @@ public sealed class FileService
         
         try
         {
-            string path = GetIinstallationsManifestPath();
+            string path = GetInstallationsManifestPath();
             if (!File.Exists(path))
                 return false;
 
@@ -61,10 +61,7 @@ public sealed class FileService
 
     public void SaveManifest(TomeManifest manifest)
     {
-        string path = GetIinstallationsManifestPath();
-        string dir = Path.GetDirectoryName(path)!;
-        Directory.CreateDirectory(dir);
-
+        string path = GetInstallationsManifestPath();
         WriteMetaFor(path);
 
         using FileStream stream = File.Create(path);
