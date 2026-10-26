@@ -39,7 +39,7 @@ public sealed partial class MainWindow : Window
 
     private TomeManifest _manifest = null!;
     private MenuItem _defaultFilterMenu = null!;
-    private ToggleButton? _currentCategory = null;
+    private LockToggleButton? _currentCategory = null;
 
     public MainWindow(FileService files, DeadlockService deadlock, GamebananaService gamebanana)
     {
@@ -298,10 +298,11 @@ public sealed partial class MainWindow : Window
 
     private void Category_Click(object sender, RoutedEventArgs? e)
     {
-        if (sender is not ToggleButton selectedButton
+        if (sender is not LockToggleButton selectedButton
             || selectedButton.IsChecked != true)
             return;
 
+        selectedButton.IsLocked = true;
         SetCurrentCategory(selectedButton);
 
         if (ReferenceEquals(sender, FeaturedButton))
@@ -312,12 +313,12 @@ public sealed partial class MainWindow : Window
             RunModsUpdateSafe(() => _gamebanana.GetInstalledSubmissionsAsync(_manifest, _pendingActions));
     }
 
-    private void SetCurrentCategory(ToggleButton? newChecked)
+    private void SetCurrentCategory(LockToggleButton? newChecked)
     {
         if (ReferenceEquals(_currentCategory, newChecked))
             return;
 
-        _currentCategory?.IsChecked = false;
+        _currentCategory?.LockOff(false);
         _currentCategory = newChecked;
     }
 

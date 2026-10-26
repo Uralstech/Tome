@@ -80,9 +80,9 @@ limitations under the License.
             </Grid>
 
             <UniformGrid Grid.Row="1" Rows="1" VerticalAlignment="Top" Margin="0,0,0,5" >
-                <ToggleButton Content="Installed" x:Name="InstalledButton" Click="Category_Click" Margin="0,0,1,0"/>
-                <ToggleButton Content="Featured" x:Name="FeaturedButton" Click="Category_Click" Margin="0,0,1,0"/>
-                <ToggleButton Content="Top Submissions" x:Name="TopSubmissionsButton" Click="Category_Click" Margin="0,0,0,0"/>
+                <local:LockToggleButton Content="Installed" x:Name="InstalledButton" Click="Category_Click" Margin="0,0,1,0"/>
+                <local:LockToggleButton Content="Featured" x:Name="FeaturedButton" Click="Category_Click" Margin="0,0,1,0"/>
+                <local:LockToggleButton Content="Top Submissions" x:Name="TopSubmissionsButton" Click="Category_Click" Margin="0,0,0,0"/>
             </UniformGrid>
 
             <DataGrid x:Name="ModsGrid" Grid.Row="2"
