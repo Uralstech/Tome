@@ -17,17 +17,19 @@ using System.Runtime.CompilerServices;
 
 namespace Tome.Models;
 
-public sealed class ListedMod : INotifyPropertyChanged
+public sealed record ListedMod(
+    int Id,
+    string? SubmissionType,
+    string? RelativePath,
+    bool IsObsolete,
+    bool IsLocal,
+    string? Name,
+    string? Author,
+    int Likes,
+    bool Install,
+    bool HasUpdate) : INotifyPropertyChanged
 {
-    public required int Id { get; init; }
-    public required string Type { get; init; }
-    public required string Name { get; init; }
-    public required string Author { get; init; }
-    public required bool IsObsolete { get; init; }
-    public required bool IsLocal { get; init; }
-    public required int Likes { get; init; }
-
-    public required bool Installed
+    public bool Install
     {
         get;
         set
@@ -41,7 +43,7 @@ public sealed class ListedMod : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(CanUpdate));
         }
-    }
+    } = Install;
 
     public bool Update
     {
@@ -56,23 +58,26 @@ public sealed class ListedMod : INotifyPropertyChanged
         }
     }
 
-    public required bool HasUpdate { get; init; }
-
-    public bool CanUpdate => Installed && HasUpdate;
+    public bool CanUpdate => Install && !IsLocal && HasUpdate;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     private void OnPropertyChanged([CallerMemberName] string propertyName = "") =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
-    public ListedModMinimal Minimal() => new(Id, Type);
+    public ModAction ToAction(ModActionType type) =>
+        new(type, SubmissionType, RelativePath, IsLocal);
 }
 
-public sealed class ModActions : Dictionary<ListedModMinimal, ModAction>;
+public sealed class ModActions : Dictionary<int, ModAction>;
 
-public sealed record ListedModMinimal(int Id, string Type);
+public sealed record ModAction(
+    ModActionType Type,
+    string? SubmissionType,
+    string? RelativePath,
+    bool IsLocal);
 
-public enum ModAction
+public enum ModActionType
 {
     Install,
     Update,

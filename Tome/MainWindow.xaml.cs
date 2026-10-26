@@ -352,7 +352,7 @@ public sealed partial class MainWindow : Window
             || button.Tag is not ListedMod mod)
             return;
 
-        if (mod.IsLocal)
+        if (mod.IsLocal || string.IsNullOrEmpty(mod.SubmissionType))
         {
             MessageBox.Show(this, "Tome cannot fetch information about locally installed mods.",
                                   "Cannot fetch details for local mod", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -360,7 +360,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        ShowModInfoSafeAsync(mod.Id, mod.Type);
+        ShowModInfoSafeAsync(mod.Id, mod.SubmissionType);
     }
 
     private void Apply_Click(object sender, RoutedEventArgs e)
@@ -385,29 +385,29 @@ public sealed partial class MainWindow : Window
             || checkbox.Tag is not ListedMod mod)
             return;
 
-        mod.Installed = checkbox.IsChecked ?? false;
-        ModAction requestedAction = mod.Installed
-            ? ModAction.Install : ModAction.Delete;
+        mod.Install = checkbox.IsChecked ?? false;
+        ModActionType requestedActionType = mod.Install
+            ? ModActionType.Install : ModActionType.Delete;
 
-        ListedModMinimal minimal = mod.Minimal();
-        if (_pendingActions.TryAdd(minimal, requestedAction))
+        ModAction action = mod.ToAction(requestedActionType);
+        if (_pendingActions.TryAdd(mod.Id, action))
             return;
 
-        ModAction pendingAction = _pendingActions[minimal];
-        if (pendingAction is ModAction.Update)
+        ModActionType pendingActionType = _pendingActions[mod.Id].Type;
+        if (pendingActionType is ModActionType.Update)
         {
-            _pendingActions[minimal] = requestedAction;
+            _pendingActions[mod.Id] = action;
             return;
         }
 
-        if ((pendingAction is ModAction.Install && requestedAction is ModAction.Delete)
-            || (pendingAction is ModAction.Delete && requestedAction is ModAction.Install))
+        if ((pendingActionType is ModActionType.Install && requestedActionType is ModActionType.Delete)
+            || (pendingActionType is ModActionType.Delete && requestedActionType is ModActionType.Install))
         {
-            _pendingActions.Remove(minimal);
+            _pendingActions.Remove(mod.Id);
             return;
         }
 
-        MessageBox.Show(this, $"Unexpected pending action {pendingAction} + requested action {requestedAction}",
+        MessageBox.Show(this, $"Unexpected pending action {pendingActionType} + requested action {requestedActionType}",
                               "Unexpected error", MessageBoxButton.OK);
     }
 
@@ -418,13 +418,12 @@ public sealed partial class MainWindow : Window
             return;
 
         mod.Update = checkbox.IsChecked ?? false;
-        ListedModMinimal minimal = mod.Minimal();
 
         if (mod.Update)
-            _pendingActions[minimal] = ModAction.Update;
-        else if (_pendingActions.TryGetValue(minimal, out ModAction pendingAction)
-            && pendingAction == ModAction.Update)
-            _pendingActions.Remove(minimal);
+            _pendingActions[mod.Id] = mod.ToAction(ModActionType.Update);
+        else if (_pendingActions.TryGetValue(mod.Id, out ModAction? pendingAction)
+            && pendingAction.Type == ModActionType.Update)
+            _pendingActions.Remove(mod.Id);
     }
 
     private async void ShowModInfoSafeAsync(int id, string type)

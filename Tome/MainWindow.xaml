@@ -91,9 +91,21 @@ limitations under the License.
                       IsReadOnly="True">
 
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Likes" Binding="{Binding Likes}" Width="40" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Author" Binding="{Binding Author}" Width="85" IsReadOnly="True" ElementStyle="{StaticResource EllipsisTextBlockStyle}"/>
-                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="True">
+                    <DataGridTextColumn Header="Likes" Width="40" IsReadOnly="True">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="{Binding Likes}"/>
+                                
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsLocal}" Value="True">
+                                        <Setter Property="Text" Value="-"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Author" Binding="{Binding Author, TargetNullValue='unknown'}" Width="85" IsReadOnly="True" ElementStyle="{StaticResource EllipsisTextBlockStyle}"/>
+                    <DataGridTextColumn Header="Name" Binding="{Binding Name, TargetNullValue='[no name provided]'}" Width="*" IsReadOnly="True">
                         <DataGridTextColumn.ElementStyle>
                             <Style BasedOn="{StaticResource EllipsisTextBlockStyle}"
                                    TargetType="TextBlock">
@@ -101,6 +113,10 @@ limitations under the License.
                                     <DataTrigger Binding="{Binding IsObsolete}" Value="True">
                                         <Setter Property="ToolTip" Value="This mod has been marked obsolete by the author."/>
                                         <Setter Property="Foreground" Value="Red"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsLocal}" Value="True">
+                                        <Setter Property="ToolTip" Value="This mod was manually added from a file from disk."/>
+                                        <Setter Property="Foreground" Value="Green"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>

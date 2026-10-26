@@ -113,29 +113,30 @@ public sealed class GamebananaService : IDisposable
 
     #region Search/Listings
 
-    private ListedMod BuildListedMod(
-        int id, string type, string name,
-        int likes, string author, bool isObsolete, bool isLocal,
-        TomeManifest manifest, ModActions pendingActions)
+    private ListedMod BuildListedMod(int id,
+        TomeManifest manifest, ModActions pendingActions,
+        string? submissionType = null, string? relativePath = null,
+        bool isObsolete = false, bool isLocal = false,
+        string? name = null, string? author = null, int likes = 0)
     {
-        ListedModMinimal minimal = new(id, type);
-        bool hasPendingAction = pendingActions.TryGetValue(minimal, out ModAction pendingAction);
+        bool hasPendingAction = pendingActions.TryGetValue(id, out ModAction? pendingAction);
 
-        return new()
-        {
-            Id = id,
-            Type = type,
-            Name = name,
-            Likes = likes,
-            Author = author,
-            IsObsolete = isObsolete,
-            IsLocal = isLocal,
-            Installed = hasPendingAction
-                ? pendingAction is ModAction.Install or ModAction.Update
+        return new(
+            Id: id,
+            SubmissionType: submissionType,
+            RelativePath: relativePath,
+            IsObsolete: isObsolete,
+            IsLocal: isLocal,
+            Name: name,
+            Author: author,
+            Likes: likes,
+            Install: hasPendingAction
+                ? pendingAction!.Type is ModActionType.Install or ModActionType.Update
                 : manifest.Mods.ContainsKey(id),
-            Update = hasPendingAction && pendingAction is ModAction.Update,
-            HasUpdate = (hasPendingAction && pendingAction is ModAction.Update)
-                        || false, // TODO!
+            HasUpdate: (hasPendingAction && pendingAction!.Type is ModActionType.Update)
+                        || false // TODO!
+        ) {
+            Update = hasPendingAction && pendingAction!.Type is ModActionType.Update,
         };
     }
 
@@ -149,12 +150,13 @@ public sealed class GamebananaService : IDisposable
                 SubmissionProfile submission = await GetSubmissionAsync(gamebanana.SubmissionId, gamebanana.SubmissionType);
                 list.Add(BuildListedMod(
                     id: gamebanana.SubmissionId,
-                    type: gamebanana.SubmissionType,
-                    name: submission.Name,
-                    likes: submission.Likes,
-                    author: submission.Author.Name,
+                    submissionType: gamebanana.SubmissionType,
                     isObsolete: submission.IsObsolete,
-                    isLocal: false,
+
+                    name: submission.Name,
+                    author: submission.Author.Name,
+                    likes: submission.Likes,
+                    
                     manifest: manifest, pendingActions: pendingActions
                 ));
 
@@ -163,12 +165,12 @@ public sealed class GamebananaService : IDisposable
 
             list.Add(BuildListedMod(
                 id: id,
-                type: string.Empty,
-                name: mod.ListingMetadata?.Name ?? "locally installed mod",
-                likes: 0,
-                author: mod.ListingMetadata?.Author ?? "unknown",
-                isObsolete: false,
+                relativePath: mod.RelativePath,
                 isLocal: true,
+
+                name: mod.ListingMetadata?.Name,
+                author: mod.ListingMetadata?.Author,
+
                 manifest: manifest, pendingActions: pendingActions
             ));
         }
@@ -219,11 +221,13 @@ public sealed class GamebananaService : IDisposable
                     SubmissionProfile submission = await GetSubmissionAsync(id, type);
                     return [BuildListedMod(
                         id: submission.Id,
-                        type: type,
+                        submissionType: type,
+                        isObsolete: submission.IsObsolete,
+
                         name: submission.Name,
-                        likes: submission.Likes,
                         author: submission.Author.Name,
-                        isObsolete: submission.IsObsolete, isLocal: false,
+                        likes: submission.Likes,
+                        
                         manifest: manifest, pendingActions: pendingActions
                     )];
 
@@ -271,11 +275,13 @@ public sealed class GamebananaService : IDisposable
             .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)visibility && sub.HasFiles)
             .Select(sub => BuildListedMod(
                 id: sub.Id,
-                type: sub.Type,
+                submissionType: sub.Type,
+                isObsolete: sub.IsObsolete,
+
                 name: sub.Name,
-                likes: sub.Likes,
                 author: sub.Author.Name,
-                isObsolete: sub.IsObsolete, isLocal: false,
+                likes: sub.Likes,
+
                 manifest: manifest, pendingActions: pendingActions
             ));
     }
@@ -307,11 +313,13 @@ public sealed class GamebananaService : IDisposable
         SubmissionProfile submission = await GetSubmissionAsync(id, type);
         return [BuildListedMod(
             id: submission.Id,
-            type: type,
+            submissionType: type,
+            isObsolete: submission.IsObsolete,
+            
             name: submission.Name,
-            likes: submission.Likes,
             author: submission.Author.Name,
-            isObsolete: submission.IsObsolete, isLocal: false,
+            likes: submission.Likes,
+            
             manifest: manifest, pendingActions: pendingActions
         )];
     }
@@ -344,11 +352,12 @@ public sealed class GamebananaService : IDisposable
             .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)defaultVisibility)
             .Select(sub => BuildListedMod(
                 id: sub.Id,
-                type: sub.Type,
+                submissionType: sub.Type,
+
                 name: sub.Name,
-                likes: sub.Likes,
                 author: sub.Author.Name,
-                isObsolete: false, isLocal: false,
+                likes: sub.Likes,
+
                 manifest: manifest, pendingActions: pendingActions
             ));
     }
@@ -381,11 +390,13 @@ public sealed class GamebananaService : IDisposable
             .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)defaultVisibility && sub.HasFiles)
             .Select(sub => BuildListedMod(
                 id: sub.Id,
-                type: sub.Type,
+                submissionType: sub.Type,
+                isObsolete: sub.IsObsolete,
+
                 name: sub.Name,
-                likes: sub.Likes,
                 author: sub.Author.Name,
-                isObsolete: sub.IsObsolete, isLocal: false,
+                likes: sub.Likes,
+
                 manifest: manifest, pendingActions: pendingActions
             ));
     }
