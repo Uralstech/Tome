@@ -62,7 +62,7 @@ public sealed partial class MainWindow : Window
         FilterChange_Click(null, null);
 
         FeaturedButton.IsChecked = true;
-        SetCurrentCategory(FeaturedButton);
+        Category_Click(FeaturedButton, null);
     }
 
     protected override void OnClosed(EventArgs e)
@@ -296,9 +296,10 @@ public sealed partial class MainWindow : Window
 
     #region Categories
 
-    private void Category_Checked(object sender, RoutedEventArgs e)
+    private void Category_Click(object sender, RoutedEventArgs? e)
     {
-        if (sender is not ToggleButton selectedButton)
+        if (sender is not ToggleButton selectedButton
+            || selectedButton.IsChecked != true)
             return;
 
         SetCurrentCategory(selectedButton);
@@ -361,6 +362,22 @@ public sealed partial class MainWindow : Window
         ShowModInfoSafeAsync(mod.Id, mod.Type);
     }
 
+    private void Apply_Click(object sender, RoutedEventArgs e)
+    {
+        bool? result = new Downloads(_pendingActions, _manifest)
+        {
+            Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+        }.ShowDialog();
+
+        if (result != true)
+            return;
+
+        _pendingActions.Clear();
+        InstalledButton.IsChecked = true;
+        Category_Click(InstalledButton, null);
+    }
+
     private void InstallToggle_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not CheckBox checkbox
@@ -415,7 +432,11 @@ public sealed partial class MainWindow : Window
         try
         {
             SubmissionProfile submission = await _gamebanana.GetSubmissionAsync(id, type);
-            ModInfo modInfoWindow = new(submission);
+            ModInfo modInfoWindow = new(submission)
+            {
+                Owner = this,
+            };
+
             modInfoWindow.Show();
         }
         catch (Exception ex)

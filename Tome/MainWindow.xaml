@@ -76,13 +76,13 @@ limitations under the License.
                 <TextBox TextWrapping="NoWrap" Text="Search for mods..." Grid.Column="0" Margin="0,0,1,0"
                          x:Name="SearchBox" KeyDown="Search_KeyDown"/>
                 <Button Content="Search" Grid.Column="1" Margin="0,0,1,0" Click="Search_Click"/>
-                <Button Content="Apply" Grid.Column="2"/>
+                <Button Content="Apply" Grid.Column="2" Click="Apply_Click"/>
             </Grid>
 
             <UniformGrid Grid.Row="1" Rows="1" VerticalAlignment="Top" Margin="0,0,0,5" >
-                <ToggleButton Content="Installed" x:Name="InstalledButton" Checked="Category_Checked" Margin="0,0,1,0"/>
-                <ToggleButton Content="Featured" x:Name="FeaturedButton" Checked="Category_Checked" Margin="0,0,1,0"/>
-                <ToggleButton Content="Top Submissions" x:Name="TopSubmissionsButton" Checked="Category_Checked" Margin="0,0,0,0"/>
+                <ToggleButton Content="Installed" x:Name="InstalledButton" Click="Category_Click" Margin="0,0,1,0"/>
+                <ToggleButton Content="Featured" x:Name="FeaturedButton" Click="Category_Click" Margin="0,0,1,0"/>
+                <ToggleButton Content="Top Submissions" x:Name="TopSubmissionsButton" Click="Category_Click" Margin="0,0,0,0"/>
             </UniformGrid>
 
             <DataGrid x:Name="ModsGrid" Grid.Row="2"

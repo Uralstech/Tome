@@ -1,23 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
+﻿using System.Windows;
+using Tome.Models;
 
 namespace Tome;
-/// <summary>
-/// Interaction logic for Downloads.xaml
-/// </summary>
+
 public partial class Downloads : Window
 {
-    public Downloads()
+    private readonly TomeManifest _manifest;
+    private readonly ModActions _requestedActions;
+
+    public Downloads(ModActions actions, TomeManifest manifest)
     {
         InitializeComponent();
+
+        _manifest = manifest;
+        _requestedActions = actions;
     }
 }
