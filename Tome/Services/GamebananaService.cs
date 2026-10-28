@@ -109,13 +109,16 @@ public sealed class GamebananaService : IDisposable
             ? profile : throw new InvalidOperationException("Cannot use mod with no listed files.");
     }
 
+    public Task<string?> DownloadAsync(Uri uri, string outputPath, Action<long>? onProgress = null) =>
+        Gamebanana.Submission.DownloadFileAsync(uri, outputPath, onProgress);
+
     #endregion
 
     #region Search/Listings
 
     private ListedMod BuildListedMod(int id,
         TomeManifest manifest, ModActions pendingActions,
-        string? submissionType = null, string? relativePath = null,
+        string? submissionType = null, string? path = null,
         bool isObsolete = false, bool isLocal = false,
         string? name = null, string? author = null, int likes = 0)
     {
@@ -124,7 +127,7 @@ public sealed class GamebananaService : IDisposable
         return new(
             Id: id,
             SubmissionType: submissionType,
-            RelativePath: relativePath,
+            Path: path,
             IsObsolete: isObsolete,
             IsLocal: isLocal,
             Name: name,
@@ -165,7 +168,7 @@ public sealed class GamebananaService : IDisposable
 
             list.Add(BuildListedMod(
                 id: id,
-                relativePath: mod.RelativePath,
+                path: mod.RelativePath,
                 isLocal: true,
 
                 name: mod.ListingMetadata?.Name,

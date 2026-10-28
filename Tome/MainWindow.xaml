@@ -125,7 +125,7 @@ limitations under the License.
                     <DataGridTemplateColumn Header="Installed" Width="55">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <CheckBox IsChecked="{Binding Installed}" Tag="{Binding}"
+                                <CheckBox IsChecked="{Binding Install}" Tag="{Binding}"
                                           Click="InstallToggle_Click" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>

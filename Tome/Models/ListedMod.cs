@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using GamebananaAPI.Data.Submission;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -20,7 +21,7 @@ namespace Tome.Models;
 public sealed record ListedMod(
     int Id,
     string? SubmissionType,
-    string? RelativePath,
+    string? Path,
     bool IsObsolete,
     bool IsLocal,
     string? Name,
@@ -65,17 +66,24 @@ public sealed record ListedMod(
     private void OnPropertyChanged([CallerMemberName] string propertyName = "") =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
-    public ModAction ToAction(ModActionType type) =>
-        new(type, SubmissionType, RelativePath, IsLocal);
+    public ModAction ToAction(ModActionType type) => new(type, this);
 }
 
 public sealed class ModActions : Dictionary<int, ModAction>;
 
-public sealed record ModAction(
-    ModActionType Type,
-    string? SubmissionType,
-    string? RelativePath,
-    bool IsLocal);
+public sealed record ModAction(ModActionType Type, ListedMod Mod);
+
+public sealed class OnlineModFileModel
+{
+    public required SubmissionFile File { get; init; }
+    public required string Text { get; init; }
+    public bool IsSelected { get; set; }
+}
+
+public sealed record ModFile(
+    Uri Source, string Md5,
+    string? TargetName, long Size
+);
 
 public enum ModActionType
 {

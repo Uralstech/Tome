@@ -99,6 +99,9 @@ public static class Gamebanana
             Uri uri = new(BaseUri, $"{type}/{submission}/ProfilePage");
             return await ApiClient.GetAsync(uri, SubmissionJsonContext.Default.SubmissionProfile, token);
         }
+
+        public static Task<string?> DownloadFileAsync(Uri uri, string outputPath, Action<long>? onProgress = null, CancellationToken token = default) =>
+            ApiClient.DownloadFileAsync(uri, outputPath, onProgress, token);
     }
 
     public static class Category

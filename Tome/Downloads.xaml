@@ -6,8 +6,10 @@
         xmlns:local="clr-namespace:Tome"
         mc:Ignorable="d"
         WindowStyle="None"
+        Loaded="Window_Loaded"
+        ContentRendered="Window_ContentRendered"
         MinHeight="480" MinWidth="640"
-        Height="480" Width="640" 
+        Height="480" Width="640"
         Title="Tome: Mod Manager for Deadlock" Background="Beige">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="25"
@@ -29,33 +31,33 @@
             <TextBox x:Name="LogsTextBox" Grid.Row="0" IsReadOnly="True" Margin="0,0,0,1" />
 
             <Border x:Name="FileSelectionBorder" Grid.Row="1" BorderBrush="Gray" BorderThickness="1"
-                    Background="LightYellow" Padding="5,2,5,5" Margin="0,0,0,1" Visibility="Collapsed">
+                    Background="LightYellow" Padding="5,2,5,5" Margin="0,0,0,1">
 
                 <StackPanel Grid.Row="0">
-                    <TextBlock Text="'ABCD' has multiple files. Choose one to install:" FontSize="12" Margin="0,0,0,5"/>
+                    <TextBlock x:Name="FileSelectionText" FontSize="12" Margin="0,0,0,5"/>
 
-                    <ItemsControl>
+                    <ItemsControl x:Name="FileSelectionButtons">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <RadioButton Content="{Binding Name}" GroupName="FileSelectionGroup" IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
+                                <RadioButton Content="{Binding Text}" GroupName="FileSelectionGroup" IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <Button Content="Install" HorizontalAlignment="Right" Padding="5,0,5,0" Margin="0,5,0,0"/>
+                    <Button Content="Install" HorizontalAlignment="Right" Padding="5,0,5,0" Margin="0,5,0,0" Click="FileSelection_Click"/>
                 </StackPanel>
             </Border>
 
-            <Border Grid.Row="2" BorderBrush="Gray" BorderThickness="1" Background="LightYellow" Padding="5,2,5,5" Visibility="Collapsed">
+            <Border x:Name="DownloadProgressBorder" Grid.Row="2" BorderBrush="Gray" BorderThickness="1" Background="LightYellow" Padding="5,2,5,5">
                 <StackPanel Orientation="Vertical">
                     <TextBlock x:Name="CurrentDownloadText" FontSize="12" Margin="0,0,1,5"/>
                     <ProgressBar x:Name="DownloadProgressBar" Height="20"/>
                 </StackPanel>
             </Border>
 
-            <UniformGrid Grid.Row="2" Rows="1">
-                <Button Content="Cancel" Margin="0,0,1,0"/>
-                <Button Content="Continue"/>
+            <UniformGrid x:Name="CancelContinueButtons" Grid.Row="2" Rows="1">
+                <Button Content="Cancel" Click="Cancel_Click" Margin="0,0,1,0"/>
+                <Button Content="Continue" Click="Continue_Click"/>
             </UniformGrid>
         </Grid>
     </DockPanel>

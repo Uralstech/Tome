@@ -32,10 +32,48 @@ internal static class ApiClient
         if (!response.IsSuccessStatusCode)
         {
             string body = await response.Content.ReadAsStringAsync(token);
-            throw new HttpRequestException($"An HTTP error occurred (code {response.StatusCode}):\n{body}", null, response.StatusCode);
+            throw new HttpRequestException($"A HTTP error occurred (code {response.StatusCode}):\n{body}", null, response.StatusCode);
         }
 
         return await response.Content.ReadFromJsonAsync(json, token)
             ?? throw new InvalidOperationException("The API returned an empty response");
+    }
+
+    internal static async Task<string?> DownloadFileAsync(Uri uri, string outputPath, Action<long>? onProgress = null, CancellationToken token = default)
+    {
+        using HttpResponseMessage response = await s_client.GetAsync(uri,
+            HttpCompletionOption.ResponseHeadersRead, token);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            string body = await response.Content.ReadAsStringAsync(token);
+            throw new HttpRequestException($"A HTTP error occurred (code {response.StatusCode}):\n{body}", null, response.StatusCode);
+        }
+
+        const int BufferSize = 1024 * 1024;
+        using Stream contentStream = await response.Content.ReadAsStreamAsync(token);
+        using FileStream fileStream = new(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, true);
+
+        long totalRead = 0L;
+        Memory<byte> buffer = new byte[BufferSize];
+        bool isMoreToRead = true;
+
+        do
+        {
+            int read = await contentStream.ReadAsync(buffer, token);
+            if (read == 0)
+            {
+                isMoreToRead = false;
+                break;
+            }
+
+            await fileStream.WriteAsync(buffer[..read], token);
+            totalRead += read;
+
+            onProgress?.Invoke(totalRead);
+        }
+        while (isMoreToRead);
+
+        return response.Content.Headers.ContentType?.MediaType;
     }
 }
