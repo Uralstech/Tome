@@ -100,7 +100,7 @@ public partial class Downloads : Window
         {
             CancelContinueButtons.IsEnabled = false;
             CancelContinueButtons.Visibility = Visibility.Visible;
-            
+
             Log("Loading submission details, please wait...");
 
             StringBuilder sb = new();
@@ -569,7 +569,7 @@ public partial class Downloads : Window
             ids.Insert(0, definition.Id);
             results.TryGetValue(definition.ParentId, out definition);
         } while (definition != null);
-        
+
         return ids;
     }
 

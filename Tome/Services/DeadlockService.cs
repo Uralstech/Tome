@@ -176,7 +176,7 @@ public sealed class DeadlockService(FileService fileService)
         {
             string backupDir = Path.GetDirectoryName(backupPath)!;
             Directory.CreateDirectory(backupDir);
-            
+
             _fileService.WriteMetaFor(backupPath);
             File.Copy(file, backupPath);
             isFreshBackup = true;

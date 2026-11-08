@@ -57,7 +57,7 @@ public sealed class InstalledMod2
     /// <summary>Gamebanana submission metadata. If <see langword="null"/>, this is a local mod.</summary>
     [JsonPropertyName("gamebananaSubmission")]
     public required GamebananaSubmission? GamebananaSubmission { get; set; }
-    
+
     /// <summary>The files associated with this mod.</summary>
     [JsonPropertyName("files")]
     public required List<InstalledModFile> Files { get; init; }

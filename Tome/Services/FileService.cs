@@ -17,7 +17,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text.Json;
 using Tome.Data;
-using Tome.Models;
 
 namespace Tome.Services;
 
@@ -41,7 +40,7 @@ public sealed class FileService
     public bool TryGetManifest([NotNullWhen(true)] out TomeManifest? manifest)
     {
         manifest = null;
-        
+
         try
         {
             string path = GetInstallationsManifestPath();
@@ -49,7 +48,7 @@ public sealed class FileService
                 return false;
 
             using FileStream stream = File.OpenRead(path);
-            
+
             manifest = JsonSerializer.Deserialize<TomeManifest>(stream, TomeJsonContext.Default.Options);
             return manifest != null;
         }

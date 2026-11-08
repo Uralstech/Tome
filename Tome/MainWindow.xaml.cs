@@ -104,7 +104,7 @@ public sealed partial class MainWindow : Window
         {
             MessageBox.Show(this, "Could not find a Deadlock installation. Please select it manually.",
                                   "Could not find Deadlock", MessageBoxButton.OK, MessageBoxImage.Exclamation);
-            
+
             if (!TryRequestDeadlockFolder(null, out deadlockPath)
                 || !_deadlock.VerifyDeadlockInstallation(deadlockPath))
             {

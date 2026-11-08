@@ -186,7 +186,7 @@ public sealed class GamebananaService : IDisposable
                     name: submission.Name,
                     author: submission.Author.Name,
                     likes: submission.Likes,
-                    
+
                     manifest: manifest, pendingActions: pendingActions
                 ));
 
@@ -257,7 +257,7 @@ public sealed class GamebananaService : IDisposable
                         name: submission.Name,
                         author: submission.Author.Name,
                         likes: submission.Likes,
-                        
+
                         manifest: manifest, pendingActions: pendingActions
                     )];
 
@@ -345,11 +345,11 @@ public sealed class GamebananaService : IDisposable
             id: submission.Id,
             submissionType: type,
             isObsolete: submission.IsObsolete,
-            
+
             name: submission.Name,
             author: submission.Author.Name,
             likes: submission.Likes,
-            
+
             manifest: manifest, pendingActions: pendingActions
         )];
     }

@@ -25,5 +25,5 @@ public class ListMetadata
     public int RecordsPerPage { get; set; }
 
     [JsonPropertyName("_bIsComplete")]
-    public bool IsComplete { get; set;}
+    public bool IsComplete { get; set; }
 }

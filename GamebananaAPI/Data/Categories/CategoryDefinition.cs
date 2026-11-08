@@ -28,7 +28,7 @@ public class TopLevelCategoryDefinition
     public string CategoryType { get; set; } = null!;
 }
 
-public  class CategoryDefinition
+public class CategoryDefinition
 {
     [JsonPropertyName("_idRow")]
     public int Id { get; set; }
