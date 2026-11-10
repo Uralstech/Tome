@@ -28,7 +28,7 @@ limitations under the License.
         BorderBrush="Gray"
         MinHeight="480" MinWidth="640"
         Height="480" Width="640" 
-        Title="Tome: Mod Manager for Deadlock" Background="Beige" Icon="/Icon.ico">
+        Title="Tome Mod Manager" Background="Beige" Icon="/Icon.ico">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="25"
                       ResizeBorderThickness="4"

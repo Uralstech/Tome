@@ -19,19 +19,6 @@ namespace Tome;
 
 public sealed partial class MinimalTitleBar : UserControl
 {
-    public static readonly DependencyProperty TitleProperty =
-        DependencyProperty.Register(
-            nameof(Title),
-            typeof(string),
-            typeof(MinimalTitleBar),
-            new PropertyMetadata("Tome: Mod Manager for Deadlock"));
-
-    public string Title
-    {
-        get => (string)GetValue(TitleProperty);
-        set => SetValue(TitleProperty, value);
-    }
-
     public MinimalTitleBar()
     {
         InitializeComponent();

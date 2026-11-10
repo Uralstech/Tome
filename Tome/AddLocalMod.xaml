@@ -28,7 +28,7 @@ limitations under the License.
         WindowStartupLocation="CenterOwner"
         Height="181" Width="400"
         Loaded="Window_Loaded"
-        Title="Tome: Add Local Mod" Background="Beige" Icon="/Icon.ico">
+        Title="Add Local Mod" Background="Beige" Icon="/Icon.ico">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="25"
                       ResizeBorderThickness="4"
@@ -37,7 +37,7 @@ limitations under the License.
     </WindowChrome.WindowChrome>
 
     <DockPanel LastChildFill="True">
-        <local:MinimalTitleBar Title="Add Local Mod" DockPanel.Dock="Top"/>
+        <local:MinimalTitleBar DockPanel.Dock="Top"/>
 
         <StackPanel Orientation="Vertical" Margin="7">
             <Grid Margin="0,0,0,5">

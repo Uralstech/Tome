@@ -30,20 +30,20 @@ internal static class ApiClient
         using HttpResponseMessage response = await s_client.GetAsync(path,
             HttpCompletionOption.ResponseHeadersRead, token);
 
-        if (!response.IsSuccessStatusCode)
+        if (response.IsSuccessStatusCode)
         {
-            if (response.StatusCode is not (HttpStatusCode.NotFound or HttpStatusCode.Forbidden) && !_isRetry)
-            {
-                await Task.Delay(500);
-                return await GetAsync<T>(path, token, _isRetry: true);
-            }
-
-            string body = await response.Content.ReadAsStringAsync(token);
-            throw new HttpRequestException($"A HTTP error occurred (code {response.StatusCode}):\n{body}", null, response.StatusCode);
+            return await response.Content.ReadFromJsonAsync<T>(GamebananaJson.Default.Options, token)
+                ?? throw new InvalidOperationException("The API returned an empty response");
         }
 
-        return await response.Content.ReadFromJsonAsync<T>(GamebananaJson.Default.Options, token)
-            ?? throw new InvalidOperationException("The API returned an empty response");
+        if (response.StatusCode is not (HttpStatusCode.NotFound or HttpStatusCode.Forbidden) && !_isRetry)
+        {
+            await Task.Delay(500);
+            return await GetAsync<T>(path, token, _isRetry: true);
+        }
+
+        string body = await response.Content.ReadAsStringAsync(token);
+        throw new HttpRequestException($"A HTTP error occurred (code {response.StatusCode}):\n{body}", null, response.StatusCode);
     }
 
     internal static async Task<string?> DownloadFileAsync(Uri uri, string outputPath, Action<long>? onProgress = null, CancellationToken token = default, bool _isRetry = false)

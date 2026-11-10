@@ -30,7 +30,7 @@ limitations under the License.
         BorderBrush="Gray"
         MinHeight="480" MinWidth="640"
         Height="480" Width="640" 
-        Title="Tome: Mod Profile" Background="Beige" Icon="/Icon.ico">
+        Title="{Binding Name}" Background="Beige" Icon="/Icon.ico">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="25"
                       ResizeBorderThickness="4"

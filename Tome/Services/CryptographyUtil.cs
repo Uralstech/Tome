@@ -13,6 +13,7 @@
 // limitations under the License.
 
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -44,9 +45,19 @@ internal static class CryptographyUtil
     public static string Md5Stream(Stream stream)
     {
         long originalPosition = stream.Position;
-        byte[] hashed = MD5.HashData(stream);
+
+        Span<byte> hash = stackalloc byte[MD5.HashSizeInBytes];
+        MD5.HashData(stream, hash);
 
         stream.Position = originalPosition;
-        return Convert.ToHexStringLower(hashed);
+        return Convert.ToHexStringLower(hash);
+    }
+
+    public static UInt128 GetUniqueId()
+    {
+        Span<byte> guidBytes = stackalloc byte[16];
+        return Guid.NewGuid().TryWriteBytes(guidBytes, bigEndian: false, out _)
+            ? MemoryMarshal.Read<UInt128>(guidBytes)
+            : throw new InvalidOperationException("Could not write Guid to Span.");
     }
 }

@@ -29,7 +29,7 @@ limitations under the License.
         MinHeight="480" MinWidth="640"
         Height="480" Width="640"
         WindowStartupLocation="CenterOwner"
-        Title="Tome: Apply Changes" Background="Beige" Icon="/Icon.ico">
+        Title="Apply Changes" Background="Beige" Icon="/Icon.ico">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="25"
                       ResizeBorderThickness="4"
