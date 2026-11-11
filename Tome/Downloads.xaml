@@ -58,7 +58,8 @@ limitations under the License.
                     <ItemsControl x:Name="FileSelectionButtons">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <RadioButton Content="{Binding Text}" GroupName="FileSelectionGroup" IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
+                                <RadioButton Content="{Binding Text}" GroupName="{Binding Group}" Tag="{Binding IsNotSelected}" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                             Checked="FileSelectionRadioButton_Checked" Click="FileSelectionRadioButton_Click"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

@@ -131,19 +131,20 @@ public sealed class ModActions : Dictionary<UInt128, ModAction>;
 public sealed record ModAction(ModActionType Type, ListedMod Mod);
 
 public sealed record ModReplacing(string Text, UInt128? ModId);
-public sealed record OnlineModFileModel(string Text, SubmissionFile? File)
+
+public sealed record OnlineModFileModel(string Text, string? Group, SubmissionFile? File)
 {
     public bool IsSelected { get; set; }
+    public bool IsNotSelected => !IsSelected;
 }
 
 public sealed record ModFile(
     Uri Source,
-    string SourceName,
-    string SourceMd5,
-    long SourceSize,
+    string Name,
+    string Md5Hash,
+    long Size,
 
-    string? TargetRelativePath,
-    SubmissionProfile? GamebananaSubmission,
+    string? TargetPath,
     SubmissionFile? GamebananaFile
 );
 

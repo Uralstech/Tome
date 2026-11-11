@@ -21,8 +21,8 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Controls;
 using Tome.Data;
-using Tome.Data.Legacy;
 using Tome.Models;
 using Tome.Services;
 
@@ -34,6 +34,7 @@ public partial class Downloads : Window
     private static partial Regex VpkMatchRegexGen();
 
     private static readonly Regex s_vpkMatchRegex = VpkMatchRegexGen();
+    private static readonly Uri s_invalidUri = new("tome:invalid");
 
     private const int SkinSuperCategory = 33295;
     private static readonly HashSet<int> s_conflictableChildCategories = [
@@ -80,21 +81,22 @@ public partial class Downloads : Window
 
     private async void Window_ContentRendered(object sender, EventArgs e)
     {
-        Queue<(ModAction, ModFile)>? actionsQueue = await LoadSubmissionsAsync();
+        Queue<(ModAction, List<ModFile>)>? actionsQueue = await LoadSubmissionsAsync();
         if (actionsQueue is null)
         {
             Close();
             return;
         }
-
+        
         DialogResult = await ExecuteActionsAsync(actionsQueue);
         RebuildConflictableCategories();
+        _files.SaveManifest(_manifest);
         Close();
     }
 
     #region File Selection
-
-    private async Task<Queue<(ModAction, ModFile)>?> LoadSubmissionsAsync()
+    
+    private async Task<Queue<(ModAction, List<ModFile>)>?> LoadSubmissionsAsync()
     {
         try
         {
@@ -106,16 +108,13 @@ public partial class Downloads : Window
             StringBuilder sb = new();
             sb.AppendLine("The following actions have been requested:");
 
-            Queue<(ModAction, ModFile)> queue = [];
+            Queue<(ModAction, List<ModFile>)> queue = [];
             string addonsFolder = _deadlock.GetAddonsPath(_manifest.GamePath);
 
-            foreach ((int id, ModAction action) in _requestedActions)
+            foreach ((UInt128 id, ModAction action) in _requestedActions)
             {
-                _manifest.Mods.TryGetValue(id, out InstalledMod? registeredMod);
-                string? targetRelativePath = action.Type is ModActionType.Update or ModActionType.Delete
-                    ? registeredMod!.RelativePath : null;
-
-                ModFile file;
+                List<ModFile> files = [];
+                
                 FileInfo fileInfo;
                 switch (action.Type)
                 {
@@ -123,21 +122,26 @@ public partial class Downloads : Window
                     case ModActionType.Install:
                         if (action.Mod.IsLocal)
                         {
-                            fileInfo = new FileInfo(action.Mod.Path!);
-                            file = new ModFile(
-                                Source: new Uri(fileInfo.FullName, UriKind.Absolute),
-                                SourceName: fileInfo.Name,
-                                SourceMd5: CryptographyUtil.Md5File(fileInfo.FullName),
-                                SourceSize: fileInfo.Length,
+                            if (action.Mod is not OfflineListedMod offlineMod)
+                                throw new InvalidOperationException("Tried using online mod which was declared local.");
 
-                                TargetRelativePath: targetRelativePath,
-                                GamebananaSubmission: null,
+                            fileInfo = new FileInfo(offlineMod.Path);
+                            files.Add(new ModFile(
+                                Source: new Uri(fileInfo.FullName, UriKind.Absolute),
+                                Name: fileInfo.Name,
+                                Md5Hash: CryptographyUtil.Md5File(fileInfo.FullName),
+                                Size: fileInfo.Length,
+
+                                TargetPath: fileInfo.FullName,
                                 GamebananaFile: null
-                            );
+                            ));
                             break;
                         }
 
-                        SubmissionProfile submission = await _gamebanana.GetSubmissionAsync(id, action.Mod.SubmissionType!);
+                        if (action.Mod is not OnlineListedMod onlineMod)
+                            throw new InvalidOperationException("Tried using local mod which was declared online.");
+
+                        SubmissionProfile submission = await _gamebanana.GetSubmissionAsync(onlineMod.SubmissionId, onlineMod.SubmissionType);
                         if (submission.Files is not { Count: > 0 })
                         {
                             MessageBoxResult result = MessageBox.Show(this, $"'{submission.Name}' does not have any downloadable file. Skip?", "Invalid mod",
@@ -149,57 +153,120 @@ public partial class Downloads : Window
                             return null;
                         }
 
-                        SubmissionFile remoteFile;
-                        if (action.Type is ModActionType.Update)
+                        if (action.Type is ModActionType.Install)
                         {
-                            SubmissionFile? autoUpdate = submission.Files.FirstOrDefault(file =>
-                                file.Name == registeredMod?.GamebananaMetadata?.FileName);
+                            if (submission.Files.Count == 1)
+                            {
+                                SubmissionFile singleFile = submission.Files[0];
+                                files.Add(new ModFile(
+                                    Source: new Uri(singleFile.DownloadUrl),
+                                    Name: singleFile.Name,
+                                    Md5Hash: singleFile.Md5Checksum,
+                                    Size: singleFile.Size,
 
-                            autoUpdate ??= await AskUserForMissingUpdateAsync(submission);
-                            if (autoUpdate is null)
+                                    TargetPath: null,
+                                    GamebananaFile: singleFile
+                                ));
+                                break;
+                            }
+
+                            IEnumerable<SubmissionFile> selectedFiles = await AskUserForFilesAsync(submission);
+                            files.AddRange(selectedFiles.Select(onlineFile =>
+                                new ModFile(
+                                    Source: new Uri(onlineFile.DownloadUrl),
+                                    Name: onlineFile.Name,
+                                    Md5Hash: onlineFile.Md5Checksum,
+                                    Size: onlineFile.Size,
+
+                                    TargetPath: null,
+                                    GamebananaFile: onlineFile
+                                )));
+
+                            break;
+                        }
+
+                        Dictionary<string, InstalledModFile> installedFiles = new(_manifest.Mods2[id].Files
+                            .Select(static installedFile => new KeyValuePair<string, InstalledModFile>(installedFile.GamebananaFile!.Name, installedFile)));
+
+                        Dictionary<string, SubmissionFile> availableFiles = new(submission.Files
+                            .Select(static onlineFile => new KeyValuePair<string, SubmissionFile>(onlineFile.Name, onlineFile)));
+
+                        List<(InstalledModFile Old, SubmissionFile New)> pairs = [.. installedFiles.Keys.Intersect(availableFiles.Keys)
+                            .Select(key =>
+                            {
+                                installedFiles.Remove(key, out InstalledModFile? installedFile);
+                                availableFiles.Remove(key, out SubmissionFile? onlineFile);
+                                return (installedFile!, onlineFile!);
+                            })];
+
+                        List<InstalledModFile> missingUpdates = [];
+                        foreach ((string name, InstalledModFile installedFile) in installedFiles)
+                        {
+                            SubmissionFile? onlineFile = await AskUserForMissingUpdateAsync(submission, name, availableFiles.Values);
+                            if (onlineFile is null)
+                            {
+                                missingUpdates.Add(installedFile);
+                                continue;
+                            }
+
+                            pairs.Add((installedFile, onlineFile));
+                            availableFiles.Remove(name);
+                        }
+
+                        if (missingUpdates.Count > 0
+                            && (availableFiles.Count > 0
+                                || MessageBox.Show(this, $"The following files from '{submission.Name}' are no longer listed, and there are no alternatives. " +
+                                                         $"They will be deleted if you choose to continue with the update. Continue?",
+                                                         "Files unlisted", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes))
                                 continue;
 
-                            remoteFile = autoUpdate;
-                        }
-                        else if (submission.Files.Count > 1)
-                            remoteFile = await AskUserForFileAsync(submission);
-                        else
-                            remoteFile = submission.Files[0];
+                        files.AddRange(pairs.Select(pair => new ModFile(
+                            Source: new Uri(pair.New.DownloadUrl),
+                            Name: pair.New.Name,
+                            Md5Hash: pair.New.Md5Checksum,
+                            Size: pair.New.Size,
 
-                        file = new ModFile(
-                            Source: new Uri(remoteFile.DownloadUrl),
-                            SourceName: remoteFile.Name,
-                            SourceMd5: remoteFile.Md5Checksum,
-                            SourceSize: remoteFile.Size,
+                            TargetPath: Path.Combine(addonsFolder, pair.Old.RelativePath),
+                            GamebananaFile: pair.New
+                        )));
 
-                            TargetRelativePath: targetRelativePath,
-                            GamebananaSubmission: submission,
-                            GamebananaFile: remoteFile
-                        );
+                        files.AddRange(missingUpdates.Select(missedFile => new ModFile(
+                            Source: s_invalidUri,
+                            Name: string.Empty,
+                            Md5Hash: string.Empty,
+                            Size: 0,
+
+                            TargetPath: Path.Combine(addonsFolder, missedFile.RelativePath),
+                            GamebananaFile: null
+                        )));
+
                         break;
 
                     case ModActionType.Delete:
-                        string fullPath = Path.Combine(addonsFolder, registeredMod!.RelativePath);
-                        fileInfo = new FileInfo(fullPath);
+                        foreach (InstalledModFile installedFile in _manifest.Mods2[id].Files)
+                        {
+                            string fullPath = Path.Combine(addonsFolder, installedFile.RelativePath);
+                            fileInfo = new FileInfo(fullPath);
 
-                        file = new ModFile(
-                            Source: new Uri(fileInfo.FullName, UriKind.Absolute),
-                            SourceName: fileInfo.Name,
-                            SourceMd5: registeredMod.OriginalFileMd5Checksum,
-                            SourceSize: fileInfo.Length,
+                            files.Add(new ModFile(
+                                Source: new Uri(fileInfo.FullName, UriKind.Absolute),
+                                Name: fileInfo.Name,
+                                Md5Hash: installedFile.Md5Checksum,
+                                Size: fileInfo.Length,
 
-                            TargetRelativePath: targetRelativePath,
-                            GamebananaSubmission: null,
-                            GamebananaFile: null
-                        );
+                                TargetPath: fileInfo.FullName,
+                                GamebananaFile: null
+                            ));
+                        }
+
                         break;
 
                     default:
                         throw new NotImplementedException($"Case for '{action.Type}' not implemented.");
                 }
 
-                sb.AppendLine($"- {action.Type} '{action.Mod.Name ?? "[no name provided]"}'");
-                queue.Enqueue((action, file));
+                sb.AppendLine($"- {action.Type} '{action.Mod.Name}'");
+                queue.Enqueue((action, files));
             }
 
             Log(sb.ToString());
@@ -225,148 +292,208 @@ public partial class Downloads : Window
         }
     }
 
-    private async Task<SubmissionFile?> AskUserForMissingUpdateAsync(SubmissionProfile submission)
+    private async Task<SubmissionFile?> AskUserForMissingUpdateAsync(SubmissionProfile submission, string missing, IEnumerable<SubmissionFile> available)
     {
-        string message = $"'{submission.Name}' does not host the originally installed file anymore. Choose an alternative, or skip updating:";
-        List<OnlineModFileModel> options = [.. submission.Files!.Select(static file =>
-            new OnlineModFileModel(!string.IsNullOrEmpty(file.Description)
-                                        ? $"{file.Name}: {file.Description}" : file.Name, file)
-            ).Append(
-            new OnlineModFileModel("Skip update", null))
-        ];
+        const string GroupName = nameof(AskUserForMissingUpdateAsync);
 
-        return await BuiltInFileDialogAsync(message, options);
+        string message = $"'{submission.Name}' does not host the originally installed file '{missing}' anymore. Choose an alternative, or skip updating:";
+        List<OnlineModFileModel> options = [.. available.Select(static file =>
+            new OnlineModFileModel(!string.IsNullOrEmpty(file.Description)
+                                        ? $"{file.Name}: {file.Description}" : file.Name, GroupName, file)
+            ).Append(
+            new OnlineModFileModel("Skip update", GroupName, null))
+        ];
+    
+        return (await BuiltInFileDialogAsync(message, options)).First();
     }
 
-    private async Task<SubmissionFile> AskUserForFileAsync(SubmissionProfile submission)
+    private async Task<IEnumerable<SubmissionFile>> AskUserForFilesAsync(SubmissionProfile submission)
     {
-        string message = $"'{submission.Name}' has multiple files. Choose one to install:";
+        string message = $"'{submission.Name}' has multiple files. Choose one or more to install:";
         List<OnlineModFileModel> options = [.. submission.Files!.Select(static file =>
             new OnlineModFileModel(!string.IsNullOrEmpty(file.Description)
-                                        ? $"{file.Name}: {file.Description}" : file.Name, file)
+                                        ? $"{file.Name}: {file.Description}" : file.Name, null, file)
             )
         ];
 
-        return (await BuiltInFileDialogAsync(message, options))!;
+        return (IEnumerable<SubmissionFile>)await BuiltInFileDialogAsync(message, options);
     }
-
-    private async Task<SubmissionFile?> BuiltInFileDialogAsync(string message, List<OnlineModFileModel> options)
+    
+    private async Task<IEnumerable<SubmissionFile?>> BuiltInFileDialogAsync(string message, List<OnlineModFileModel> options)
     {
         FileSelectionText.Text = message;
         _fileSelectionTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-
+    
         options[0].IsSelected = true;
         FileSelectionButtons.ItemsSource = options;
-
+    
         FileSelectionBorder.Visibility = Visibility.Visible;
         await _fileSelectionTcs.Task;
-
-        OnlineModFileModel result = options.First(static file => file.IsSelected);
+    
+        List<SubmissionFile?> results = [.. options
+            .Where(static model => model.IsSelected)
+            .Select(static model => model.File)];
+        
         FileSelectionBorder.Visibility = Visibility.Collapsed;
-        return result.File;
-    }
+        if (results.Count > 0)
+            return results;
 
+        MessageBox.Show(this, "Please select at least one option to continue.", "Invalid selection",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+
+        FileSelectionButtons.ItemsSource = null;
+        return await BuiltInFileDialogAsync(message, options);
+    }
+    
     private void FileSelection_Click(object sender, RoutedEventArgs e) =>
         _fileSelectionTcs?.TrySetResult();
 
+    // https://stackoverflow.com/a/40041747
+    private void FileSelectionRadioButton_Checked(object sender, RoutedEventArgs e)
+    {
+        if (sender is RadioButton radioButton
+            && string.IsNullOrEmpty(radioButton.GroupName))
+            radioButton.Tag = true;
+    }
+
+    private void FileSelectionRadioButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton radioButton
+            || !string.IsNullOrEmpty(radioButton.GroupName))
+            return;
+
+        if (radioButton.Tag is null or true)
+        {
+            radioButton.Tag = false;
+            return;
+        }
+
+        if (radioButton.IsChecked == true)
+            radioButton.IsChecked = false;
+    }
+
     #endregion
 
-    private async Task<bool> ExecuteActionsAsync(Queue<(ModAction, ModFile)> queue)
+    private async Task<bool> ExecuteActionsAsync(Queue<(ModAction, List<ModFile>)> queue)
     {
         List<string> tempFiles = [];
-
         try
         {
             DownloadProgressBorder.Visibility = Visibility.Visible;
             DownloadProgressBar.Minimum = 0;
             DownloadProgressBar.Maximum = 1;
 
-            foreach ((ModAction action, ModFile file) in queue)
+            foreach ((ModAction action, List<ModFile> files) in queue)
             {
+                SubmissionProfile? submission = action.Mod is OnlineListedMod onlineMod
+                    ? await _gamebanana.GetSubmissionAsync(onlineMod.SubmissionId, onlineMod.SubmissionType)
+                    : null;
+
                 if (action.Type is ModActionType.Install
-                    && action.Mod.SubmissionType is "Mod"
-                    && file.GamebananaSubmission?.Category is Category category)
+                    && action.Mod is OnlineListedMod { SubmissionType: "Mod" }
+                    && submission?.Category is Category category
+                    && FindConflictableCategory(await GetCategoryTreeAsync(category), out int conflictableCategory)
+                    && _manifest.InstalledConflictableMods2.TryGetValue(conflictableCategory, out List<UInt128>? conflicts))
                 {
-                    List<int> categoryTree = await GetCategoryTreeAsync(category);
-                    if (FindConflictableCategory(categoryTree, out int conflictableCategory)
-                        && _manifest.InstalledConflictableMods.TryGetValue(conflictableCategory, out List<int>? conflicts))
-                    {
-                        string[] conflictingModNames = [.. conflicts
-                            .Where(modId => !_requestedActions.TryGetValue(modId, out ModAction? action) || action.Type is not ModActionType.Delete)
-                            .Select(modId => _manifest.Mods[modId].ReadableName)];
+                    string[] conflictingModNames = [.. conflicts
+                        .Where(modId => !_requestedActions.TryGetValue(modId, out ModAction? action) || action.Type is not ModActionType.Delete)
+                        .Select(modId => _manifest.Mods2[modId].Name)];
 
-                        if (conflictingModNames.Length > 0)
-                        {
-                            MessageBoxResult result = MessageBox.Show(this, $"'{action.Mod.Name}' may conflict with:\n- {string.Join("\n- ", conflictingModNames)}\n\n" +
-                                                                            $"Continue? Please check the author's notes on compatability with other mods.",
-                                                                            "Invalid mod", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-
-                            if (result == MessageBoxResult.No)
-                                continue;
-                        }
-                    }
+                    if (conflictingModNames.Length > 0
+                        && MessageBox.Show(this, $"'{action.Mod.Name}' may conflict with:\n- {string.Join("\n- ", conflictingModNames)}\n\n" +
+                                                 $"Continue? Please check the author's notes on compatability with other mods.",
+                                                 "Invalid mod", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                        continue;
                 }
 
                 switch (action.Type)
                 {
                     case ModActionType.Update:
                     case ModActionType.Install:
-                        string modName = action.Mod.Name ?? file.Source.ToString();
+                        ModFile[] deletes = [.. files.Where(static file => file.Source == s_invalidUri)];
+                        if (!VerifyDeletions(action, deletes))
+                            continue;
 
-                        string path;
-                        if (file.Source.Scheme is "file")
+                        List<(string, ModFile)> paths = [];
+                        foreach (ModFile file in files)
                         {
-                            path = file.Source.LocalPath;
-                        }
-                        else
-                        {
-                            CurrentDownloadText.Text = $"Downloading {modName}...";
+                            if (file.Source == s_invalidUri)
+                                continue;
+
+                            if (file.Source.Scheme is "file")
+                            {
+                                paths.Add((file.Source.LocalPath, file));
+                                continue;
+                            }
+
+                            CurrentDownloadText.Text = $"Downloading {action.Mod.Name} ('{file.Name}')...";
                             DownloadProgressBar.Value = 0;
 
-                            path = Path.GetTempFileName();
-                            tempFiles.Add(path);
+                            string tempPath = Path.GetTempFileName();
+                            tempFiles.Add(tempPath);
 
-                            await _gamebanana.DownloadAsync(file.Source, path, progress =>
-                                DownloadProgressBar.Value = (double)progress / file.SourceSize);
+                            await _gamebanana.DownloadAsync(file.Source, tempPath, progress =>
+                                DownloadProgressBar.Value = (double)progress / file.Size);
+                            
+                            paths.Add((tempPath, file));
                         }
-
-                        CurrentDownloadText.Text = $"Processing {modName}...";
+                
+                        CurrentDownloadText.Text = $"Processing {action.Mod.Name}...";
                         DownloadProgressBar.IsIndeterminate = true;
 
-                        if (!await ProcessDownloadedContentAsync(path, action, file))
+                        List<InstalledModFile>? results = await ProcessDownloadedContentAsync(paths, action);
+                        if (results is null)
                             return false;
-
+                
                         DownloadProgressBar.IsIndeterminate = false;
-                        break;
+                        if (results.Count == 0)
+                            continue;
 
-                    case ModActionType.Delete:
-                        CurrentDownloadText.Text = $"Deleting {action.Mod.Name ?? file.TargetRelativePath}...";
-                        DownloadProgressBar.Value = 1;
-
-                        string filePath = file.Source.LocalPath;
-                        string md5 = CryptographyUtil.Md5File(filePath);
-
-                        if (!md5.Equals(file.SourceMd5, StringComparison.InvariantCulture))
+                        _manifest.Mods2[action.Mod.Id] = new InstalledMod2
                         {
-                            MessageBoxResult result = MessageBox.Show(this, $"'{action.Mod.Name ?? file.TargetRelativePath}' does not match its known checksum. " +
-                                                                            $"You may have edited the mod outside of Tome. Continue with deletion?", "Checksum mismatch",
-                                                                            MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                            Name = action.Mod.Name,
+                            Author = action.Mod.Author,
+                            GamebananaSubmission = submission is not null
+                                ? new GamebananaSubmission
+                                {
+                                    Id = submission.Id,
+                                    Type = ((OnlineListedMod)action.Mod).SubmissionType,
+                                    CategoryType = submission.Category?.Type,
+                                    CategoryBranch = await GetCategoryTreeAsync(submission.Category)
+                                } : null,
+                            Files = results,
+                        };
 
-                            if (result == MessageBoxResult.No)
-                                continue;
+                        if (deletes.Length > 0)
+                        {
+                            CurrentDownloadText.Text = $"Deleting non-updatable files from {action.Mod.Name}...";
+                            DownloadProgressBar.Value = 1;
+
+                            foreach (ModFile file in deletes)
+                                File.Delete(file.Source.LocalPath);
                         }
 
-                        _manifest.Mods.Remove(action.Mod.Id);
-                        _files.SaveManifest(_manifest);
-
-                        File.Delete(filePath);
                         break;
+                
+                    case ModActionType.Delete:
+                        CurrentDownloadText.Text = $"Deleting {action.Mod.Name}...";
+                        DownloadProgressBar.Value = 1;
 
+                        if (!VerifyDeletions(action, files))
+                            continue;
+                
+                        _manifest.Mods2.Remove(action.Mod.Id);
+                
+                        foreach (ModFile file in files)
+                            File.Delete(file.Source.LocalPath);
+                        break;
+                
                     default:
                         throw new NotImplementedException($"Case for '{action.Type}' not implemented.");
                 }
 
                 RebuildConflictableCategories();
+                _files.SaveManifest(_manifest);
             }
 
             return true;
@@ -385,62 +512,118 @@ public partial class Downloads : Window
         }
     }
 
-    private async Task<bool> ProcessDownloadedContentAsync(string path, ModAction action, ModFile file)
+    private bool VerifyDeletions(ModAction action, IEnumerable<ModFile> files)
     {
-        string ext = Path.GetExtension(file.SourceName);
-        using FileStream stream = File.OpenRead(path);
+        string addonsPath = _deadlock.GetAddonsPath(_manifest.GamePath);
+        string[] paths = [.. files
+                            .Where(file => !CryptographyUtil.Md5File(file.Source.LocalPath).Equals(file.Md5Hash, StringComparison.InvariantCulture))
+                            .Select(file => Path.GetRelativePath(addonsPath, file.Source.LocalPath))];
 
-        if (ext is ".vpk")
-            return await InstallFileAsync(stream, action, file);
-
-        if (!ArchiveFactory.IsArchive(stream, out ArchiveType? archiveType) || archiveType is null)
-        {
-            MessageBoxResult result = MessageBox.Show(this, $"'{file.SourceName}' from '{action.Mod.Name ?? file.Source.ToString()}' is an unknown or unsupported format. Skip?", "Invalid mod file",
-                                                            MessageBoxButton.OKCancel, MessageBoxImage.Warning);
-
-            return result == MessageBoxResult.OK;
-        }
-
-        if (!string.IsNullOrEmpty(file.SourceMd5)
-            && !file.SourceMd5.Equals(CryptographyUtil.Md5Stream(stream), StringComparison.InvariantCulture))
-        {
-            MessageBoxResult result = MessageBox.Show(this, $"'{file.SourceName}' does not match its known checksum and is corrupt. Skip?", "Checksum mismatch",
-                                                            MessageBoxButton.OKCancel, MessageBoxImage.Error);
-
-            return result == MessageBoxResult.OK;
-        }
-
-        using IArchive archive = ArchiveFactory.OpenArchive(stream);
-        IArchiveEntry[] entries = [.. archive.Entries.Where(static entry => Path.GetExtension(entry.Key) is ".vpk")];
-
-        if (entries.Length == 0)
-        {
-            MessageBoxResult result = MessageBox.Show(this, $"'{file.SourceName}' from '{action.Mod.Name ?? file.Source.ToString()}' is empty or contains unsupported files. Skip?", "Invalid mod archive",
-                                                            MessageBoxButton.OKCancel, MessageBoxImage.Error);
-
-            return result == MessageBoxResult.OK;
-        }
-
-        if (entries.Length > 1)
-        {
-            MessageBoxResult result = MessageBox.Show(this, $"'{file.SourceName}' from '{action.Mod.Name ?? file.Source.ToString()}' contains multiple installable files. " +
-                                                            $"This is not currently supported. Skip?", "Invalid mod archive",
-                                                            MessageBoxButton.OKCancel, MessageBoxImage.Error);
-
-            return result == MessageBoxResult.OK;
-        }
-
-        IArchiveEntry entry = entries[0];
-        Stream entryStream = entry.OpenEntryStream();
-        return await InstallFileAsync(entryStream, action, file with
-        {
-            SourceName = Path.GetFileName(entry.Key)!,
-            SourceSize = entry.Size,
-            SourceMd5 = string.Empty
-        });
+        return paths.Length == 0
+            || MessageBox.Show(this, $"'{action.Mod.Name}' does not match its known checksums for:\n- {string.Join("\n- ", paths)}\n\n" +
+                                     $"You may have edited the mod outside of Tome. Continue with deletion?", "Checksum mismatch",
+                                     MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
     }
 
-    private async Task<bool> InstallFileAsync(Stream content, ModAction action, ModFile modFile)
+    private async Task<List<InstalledModFile>?> ProcessDownloadedContentAsync(List<(string, ModFile)> paths, ModAction action)
+    {
+        string addonsFolder = _deadlock.GetAddonsPath(_manifest.GamePath);
+        List<(string, ModFile)> validatedPaths = [];
+
+        foreach ((string path, ModFile file) in paths)
+        {
+            if (action.Type is ModActionType.Update && !string.IsNullOrEmpty(file.TargetPath))
+            {
+                string existingMd5 = CryptographyUtil.Md5File(file.TargetPath);
+                InstalledModFile existingFile = _manifest.Mods2[action.Mod.Id].Files.First(installedFile =>
+                    installedFile.RelativePath == Path.GetRelativePath(addonsFolder, file.TargetPath));
+
+                if (!existingMd5.Equals(existingFile.Md5Checksum, StringComparison.InvariantCulture)
+                    && MessageBox.Show(this, $"'{action.Mod.Name}' does not match its known checksum for '{file.Name}'. " +
+                                             $"You may have edited the mod outside of Tome. Skip?", "Checksum mismatch",
+                                             MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK)
+                    return null;
+                continue;
+            }
+
+            if (!file.Md5Hash.Equals(CryptographyUtil.Md5File(path), StringComparison.InvariantCulture))
+            {
+                if (MessageBox.Show(this, $"'{file.Name}' does not match its known checksum for '{file.Name}' and is corrupt. Skip?",
+                                          "Checksum mismatch", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK)
+                    return null;
+                continue;
+            }
+
+            if (Path.GetExtension(file.Name) is ".vpk")
+            {
+                validatedPaths.Add((path, file));
+                continue;
+            }
+
+            if (!ArchiveFactory.IsArchive(path, out ArchiveType? archiveType) || archiveType is null)
+            {
+                if (MessageBox.Show(this, $"'{file.Name}' from '{action.Mod.Name}' is an unknown or unsupported format. Skip?",
+                                          "Invalid mod file", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK)
+                    return null;
+                continue;
+            }
+
+            using IArchive archive = ArchiveFactory.OpenArchive(path);
+            IArchiveEntry[] entries = [.. archive.Entries.Where(static entry => Path.GetExtension(entry.Key) is ".vpk")];
+
+            if (entries.Length == 0)
+            {
+                if (MessageBox.Show(this, $"'{file.Name}' from '{action.Mod.Name}' is empty or contains unsupported files. Skip?",
+                                         "Invalid mod archive", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK)
+                    return null;
+                continue;
+            }
+
+            if (entries.Length > 1)
+            {
+                if (MessageBox.Show(this, $"'{file.Name}' from '{action.Mod.Name}' contains multiple installable files. " +
+                                          $"This is not currently supported. Skip?", "Invalid mod archive",
+                                          MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK)
+                    return null;
+                continue;
+            }
+
+            validatedPaths.Add((path, file));
+        }
+
+        if (validatedPaths.Count == 0)
+            return [];
+
+        List<InstalledModFile> installedFiles = [];
+        foreach ((string path, ModFile file) in validatedPaths)
+        {
+            string ext = Path.GetExtension(file.Name);
+            using FileStream stream = File.OpenRead(path);
+            Stream readStream = stream;
+
+            if (ext is not ".vpk")
+            {
+                using IArchive archive = ArchiveFactory.OpenArchive(path);
+                using Stream entryStream = archive.Entries.First(static entry => Path.GetExtension(entry.Key) is ".vpk").OpenEntryStream();
+
+                readStream = entryStream;
+            }
+
+            (bool result, InstalledModFile? installed) = await InstallFileAsync(readStream, action, file);
+            if (installed is null)
+            {
+                if (!result)
+                    return null;
+                continue;
+            }
+
+            installedFiles.Add(installed);
+        }
+
+        return installedFiles;
+    }
+    
+    private async Task<(bool, InstalledModFile?)> InstallFileAsync(Stream content, ModAction action, ModFile modFile)
     {
         string tempPath = Path.GetTempFileName();
         try
@@ -448,104 +631,58 @@ public partial class Downloads : Window
             using (FileStream writeStream = File.Create(tempPath))
                 await content.CopyToAsync(writeStream);
 
-            string md5 = CryptographyUtil.Md5File(tempPath);
-
-            if (!string.IsNullOrEmpty(modFile.SourceMd5)
-                && !modFile.SourceMd5.Equals(md5, StringComparison.InvariantCulture))
-            {
-                MessageBoxResult result = MessageBox.Show(this, $"'{modFile.SourceName}' does not match its known checksum and is corrupt. Skip?", "Checksum mismatch",
-                                                                MessageBoxButton.OKCancel, MessageBoxImage.Error);
-
-                return result == MessageBoxResult.OK;
-            }
-
-            int modId = action.Mod.Id;
             string addonsFolder = _deadlock.GetAddonsPath(_manifest.GamePath);
-            string relativePath;
-
+            UInt128 modId = action.Mod.Id;
+            string targetPath;
+    
             if (action.Type is ModActionType.Update)
             {
-                ArgumentException.ThrowIfNullOrEmpty(modFile.TargetRelativePath);
-                relativePath = modFile.TargetRelativePath;
-
-                string existingMd5 = CryptographyUtil.Md5File(Path.Combine(addonsFolder, relativePath));
-                if (!existingMd5.Equals(_manifest.Mods[modId].OriginalFileMd5Checksum, StringComparison.InvariantCulture))
-                {
-                    MessageBoxResult result = MessageBox.Show(this, $"'{action.Mod.Name ?? modFile.TargetRelativePath}' does not match its known checksum. " +
-                                                                    $"You may have edited the mod outside of Tome. Continue with update?", "Checksum mismatch",
-                                                                    MessageBoxButton.YesNo, MessageBoxImage.Warning);
-
-                    if (result == MessageBoxResult.No)
-                        return false;
-                }
+                ArgumentException.ThrowIfNullOrEmpty(modFile.TargetPath);
+                targetPath = modFile.TargetPath;
             }
             else
             {
-                relativePath = Path.GetFileName(modFile.SourceName);
-
+                string relativePath = Path.GetFileName(modFile.Name);
+    
                 bool pathFound = false;
-                string fullPath = string.Empty;
+                targetPath = string.Empty;
                 for (int i = 1; i < 100; i++)
                 {
-                    fullPath = Path.Combine(addonsFolder, relativePath);
-                    string fileName = Path.GetFileName(fullPath);
-
-                    if (s_vpkMatchRegex.IsMatch(fileName) && !File.Exists(fullPath))
+                    targetPath = Path.Combine(addonsFolder, relativePath);
+                    string fileName = Path.GetFileName(targetPath);
+    
+                    if (s_vpkMatchRegex.IsMatch(fileName) && !File.Exists(targetPath))
                     {
                         pathFound = true;
                         break;
                     }
-
+    
                     relativePath = $"pak{i:D2}_dir.vpk";
                 }
-
+    
                 if (!pathFound)
                 {
                     MessageBoxResult result = MessageBox.Show(this, $"You have already installed the maximum amount of mods supported by Tome. Skip?", "Maximum mods installed",
                                                                     MessageBoxButton.OKCancel, MessageBoxImage.Error);
-
-                    return result == MessageBoxResult.OK;
+    
+                    return (result == MessageBoxResult.OK, null);
                 }
             }
-
-            File.Copy(tempPath, Path.Combine(addonsFolder, relativePath), overwrite: true);
-
-            if (!_manifest.Mods.TryGetValue(modId, out InstalledMod? mod))
+    
+            File.Copy(tempPath, targetPath, overwrite: true);
+            return (true, new InstalledModFile
             {
-                mod = new InstalledMod
-                {
-                    RelativePath = relativePath,
-                    OriginalFileMd5Checksum = md5,
-                };
-            }
-
-            if (!string.IsNullOrEmpty(action.Mod.Name))
-            {
-                mod.ListingMetadata = new ListingMetadata
-                {
-                    Name = action.Mod.Name,
-                    Author = action.Mod.Author,
-                };
-            }
-
-            mod.GamebananaMetadata = !action.Mod.IsLocal
-                ? new GamebananaMetadata
-                {
-                    SubmissionId = modFile.GamebananaSubmission!.Id,
-                    SubmissionType = action.Mod.SubmissionType!,
-                    SubmissionCategoryType = modFile.GamebananaSubmission!.Category?.Type,
-                    SubmissionCategoryTree = await GetCategoryTreeAsync(modFile.GamebananaSubmission!.Category),
-                    FileId = modFile.GamebananaFile!.Id,
-                    FileName = modFile.GamebananaFile!.Name,
-                    FileMd5Checksum = modFile.GamebananaFile!.Md5Checksum,
-                    FileUploadDate = modFile.GamebananaFile!.Added,
-                } : null;
-
-            mod.OriginalFileMd5Checksum = md5;
-            _manifest.Mods[modId] = mod;
-
-            _files.SaveManifest(_manifest);
-            return true;
+                RelativePath = Path.GetRelativePath(addonsFolder, targetPath),
+                Md5Checksum = modFile.Md5Hash,
+                GamebananaFile = modFile.GamebananaFile is not null
+                    ? new GamebananaFile
+                    {
+                        Id = modFile.GamebananaFile.Id,
+                        Name = modFile.GamebananaFile.Name,
+                        UploadDate = modFile.GamebananaFile.Added,
+                        ArchiveMd5Checksum = modFile.GamebananaFile.Md5Checksum,
+                    } : null
+            });
         }
         finally
         {
@@ -575,21 +712,20 @@ public partial class Downloads : Window
 
     private void RebuildConflictableCategories()
     {
-        Dictionary<int, List<int>> conflictableMods = [];
-        foreach ((int id, InstalledMod mod) in _manifest.Mods)
+        Dictionary<int, List<UInt128>> conflictableMods = [];
+        foreach ((UInt128 id, InstalledMod2 mod) in _manifest.Mods2)
         {
-            if (mod.GamebananaMetadata is not { SubmissionType: "Mod", SubmissionCategoryTree.Count: > 0 }
-                || !FindConflictableCategory(mod.GamebananaMetadata.SubmissionCategoryTree, out int category))
+            if (mod.GamebananaSubmission is not { Type: "Mod", CategoryBranch.Count: > 0 }
+                || !FindConflictableCategory(mod.GamebananaSubmission.CategoryBranch, out int category))
                 continue;
 
-            if (!conflictableMods.TryGetValue(category, out List<int>? mods))
+            if (!conflictableMods.TryGetValue(category, out List<UInt128>? mods))
                 conflictableMods.Add(category, mods = []);
 
             mods.Add(id);
         }
 
-        _manifest.InstalledConflictableMods = conflictableMods;
-        _files.SaveManifest(_manifest);
+        _manifest.InstalledConflictableMods2 = conflictableMods;
     }
 
     private bool FindConflictableCategory(List<int> categoryTree, out int category)
