@@ -210,7 +210,7 @@ public partial class Downloads : Window
                             }
 
                             pairs.Add((installedFile, onlineFile));
-                            availableFiles.Remove(name);
+                            availableFiles.Remove(onlineFile.Name);
                         }
 
                         if (missingUpdates.Count > 0
@@ -485,7 +485,7 @@ public partial class Downloads : Window
                         _manifest.Mods2.Remove(action.Mod.Id);
                 
                         foreach (ModFile file in files)
-                            File.Delete(file.Source.LocalPath);
+                            File.Delete(file.TargetPath!);
                         break;
                 
                     default:
@@ -516,8 +516,8 @@ public partial class Downloads : Window
     {
         string addonsPath = _deadlock.GetAddonsPath(_manifest.GamePath);
         string[] paths = [.. files
-                            .Where(file => !CryptographyUtil.Md5File(file.Source.LocalPath).Equals(file.Md5Hash, StringComparison.InvariantCulture))
-                            .Select(file => Path.GetRelativePath(addonsPath, file.Source.LocalPath))];
+                            .Where(file => !CryptographyUtil.Md5File(file.TargetPath!).Equals(file.Md5Hash, StringComparison.InvariantCulture))
+                            .Select(file => Path.GetRelativePath(addonsPath, file.TargetPath!))];
 
         return paths.Length == 0
             || MessageBox.Show(this, $"'{action.Mod.Name}' does not match its known checksums for:\n- {string.Join("\n- ", paths)}\n\n" +
