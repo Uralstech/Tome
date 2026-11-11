@@ -403,7 +403,11 @@ public sealed partial class MainWindow : Window
 
                 if (installedMod.GamebananaSubmission is null)
                 {
-                    tasks.Add(Task.FromResult<ListedMod>(new OfflineListedMod(listing.Id, installedMod, _manifest)));
+                    tasks.Add(Task.FromResult<ListedMod>(new OfflineListedMod(listing.Id, installedMod, _manifest)
+                    {
+                        Install = true,
+                        HasUpdate = false,
+                    }));
                     continue;
                 }
 

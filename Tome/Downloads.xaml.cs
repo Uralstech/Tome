@@ -622,17 +622,21 @@ public partial class Downloads : Window
         {
             string ext = Path.GetExtension(file.Name);
             using FileStream stream = File.OpenRead(path);
-            Stream readStream = stream;
 
+            bool result;
+            InstalledModFile? installed;
             if (ext is not ".vpk")
             {
                 using IArchive archive = ArchiveFactory.OpenArchive(path);
                 using Stream entryStream = archive.Entries.First(static entry => Path.GetExtension(entry.Key) is ".vpk").OpenEntryStream();
 
-                readStream = entryStream;
+                (result, installed) = await InstallFileAsync(entryStream, action, file);
+            }
+            else
+            {
+                (result, installed) = await InstallFileAsync(stream, action, file);
             }
 
-            (bool result, InstalledModFile? installed) = await InstallFileAsync(readStream, action, file);
             if (installed is null)
             {
                 if (!result)
