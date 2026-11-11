@@ -340,7 +340,9 @@ public partial class Downloads : Window
         FileSelectionText.Text = message;
         _fileSelectionTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
     
-        options[0].IsSelected = true;
+        if (!string.IsNullOrEmpty(options[0].Group))
+            options[0].IsSelected = true;
+
         FileSelectionButtons.ItemsSource = options;
     
         FileSelectionBorder.Visibility = Visibility.Visible;

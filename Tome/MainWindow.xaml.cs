@@ -353,14 +353,11 @@ public sealed partial class MainWindow : Window
         Dictionary<UInt128, ListedMod> pending = new(_pendingActions
             .Select(kvp => new KeyValuePair<UInt128, ListedMod>(kvp.Key, kvp.Value.Mod)));
 
-        List<Task<ListedMod>> tasks = [];
+        List<Task<ListedMod>> tasks = [.. pending.Values.Select(static v => Task.FromResult(v))];
         foreach ((UInt128 id, InstalledMod2 installed) in _manifest.Mods2)
         {
-            if (pending.TryGetValue(id, out ListedMod? listing))
-            {
-                tasks.Add(Task.FromResult(listing));
+            if (pending.ContainsKey(id))
                 continue;
-            }
 
             if (installed.GamebananaSubmission is not GamebananaSubmission gbMetadata)
             {
