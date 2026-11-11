@@ -232,8 +232,8 @@ public partial class Downloads : Window
 
                         files.AddRange(missingUpdates.Select(missedFile => new ModFile(
                             Source: s_invalidUri,
-                            Name: string.Empty,
-                            Md5Hash: string.Empty,
+                            Name: missedFile.RelativePath,
+                            Md5Hash: missedFile.Md5Checksum,
                             Size: 0,
 
                             TargetPath: Path.Combine(addonsFolder, missedFile.RelativePath),
