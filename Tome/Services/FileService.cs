@@ -37,8 +37,9 @@ public sealed class FileService
 
     public string GetSaveDirectory() => GetAppDataDirectory();
 
-    public bool TryGetManifest([NotNullWhen(true)] out TomeManifest? manifest)
+    public bool TryGetManifest([NotNullWhen(true)] out TomeManifest? manifest, out TomeMeta? meta)
     {
+        meta = null;
         manifest = null;
 
         try
@@ -48,8 +49,9 @@ public sealed class FileService
                 return false;
 
             using FileStream stream = File.OpenRead(path);
-
             manifest = JsonSerializer.Deserialize<TomeManifest>(stream, TomeJsonContext.Default.Options);
+
+            TryReadMetaFor(path, out meta);
             return manifest != null;
         }
         catch (Exception ex)
@@ -62,10 +64,24 @@ public sealed class FileService
     public void SaveManifest(TomeManifest manifest)
     {
         string path = GetInstallationsManifestPath();
-        WriteMetaFor(path);
 
-        using FileStream stream = File.Create(path);
-        JsonSerializer.Serialize(stream, manifest, TomeJsonContext.Default.Options);
+        string json = JsonSerializer.Serialize(manifest, TomeJsonContext.Default.Options);
+        File.WriteAllText(path, json, System.Text.Encoding.UTF8);
+        WriteMetaFor(path);
+    }
+
+    public bool TryReadMetaFor(string filePath, [NotNullWhen(true)] out TomeMeta? meta)
+    {
+        meta = null;
+
+        string metaFile = $"{filePath}.meta";
+        if (!File.Exists(metaFile))
+            return false;
+
+        using FileStream stream = File.OpenRead(metaFile);
+        meta = JsonSerializer.Deserialize<TomeMeta>(stream, TomeJsonContext.Default.Options);
+
+        return meta is not null;
     }
 
     public void WriteMetaFor(string filePath)

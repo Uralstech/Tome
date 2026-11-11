@@ -15,6 +15,7 @@
 namespace Tome.Models;
 
 public sealed record ManifestVerificationFailures(
-    IReadOnlySet<string> RelativePaths,
+    IReadOnlySet<UInt128> ProblematicMods,
+    IReadOnlySet<string> UnknownFiles,
     string Message
 );

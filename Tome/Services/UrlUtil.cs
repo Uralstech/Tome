@@ -16,7 +16,7 @@ using System.Diagnostics;
 
 namespace Tome.Services;
 
-internal static class UrlHelper
+internal static class UrlUtil
 {
     public static void Open(string url)
     {

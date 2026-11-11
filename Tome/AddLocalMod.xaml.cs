@@ -17,7 +17,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using Tome.Data;
-using Tome.Data.Legacy;
 using Tome.Models;
 
 namespace Tome;
@@ -26,7 +25,7 @@ public partial class AddLocalMod : Window
 {
     private readonly TomeManifest _manifest;
     private readonly ModActions _pendingActions;
-    public (int Id, InstalledMod Mod)? Replacing { get; private set; }
+    public UInt128? Replacing { get; private set; }
 
     public AddLocalMod(TomeManifest manifest, ModActions pendingActions)
     {
@@ -38,18 +37,18 @@ public partial class AddLocalMod : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        List<ModReplacing> replacements = new(_manifest.Mods.Count + 1)
+        List<ModReplacing> replacements = new(_manifest.Mods2.Count + 1)
         {
-            new("Install as new", 0, null)
+            new("Install as new", null)
         };
 
-        foreach ((int id, InstalledMod mod) in _manifest.Mods)
+        foreach ((UInt128 id, InstalledMod2 mod) in _manifest.Mods2)
         {
             if (_pendingActions.TryGetValue(id, out ModAction? pending)
                 && pending.Type is not ModActionType.Update)
                 continue;
 
-            replacements.Add(new ModReplacing(mod.ReadableName, id, mod));
+            replacements.Add(new ModReplacing(mod.Name, id));
         }
 
         ModReplacement.ItemsSource = replacements;
@@ -62,15 +61,14 @@ public partial class AddLocalMod : Window
             || e.AddedItems[0] is not ModReplacing replacing)
             return;
 
-        bool isReplacing = replacing.Mod is not null;
+        Replacing = replacing.ModId;
+        ModName.IsEnabled = ModAuthor.IsEnabled = replacing.ModId is null;
 
-        Replacing = isReplacing ? (replacing.ModId, replacing.Mod!) : null;
-        ModName.IsEnabled = ModAuthor.IsEnabled = !isReplacing;
-
-        if (isReplacing)
+        if (replacing.ModId is UInt128 modId
+            && _manifest.Mods2.TryGetValue(modId, out InstalledMod2? installedMod))
         {
-            ModName.Text = replacing.Mod!.ListingMetadata?.Name;
-            ModAuthor.Text = replacing.Mod!.ListingMetadata?.Author;
+            ModName.Text = installedMod.Name;
+            ModAuthor.Text = installedMod.Author;
         }
     }
 

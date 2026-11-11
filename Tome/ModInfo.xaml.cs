@@ -74,14 +74,14 @@ public sealed partial class ModInfo : Window
     }
 
     private void AuthorLink_Click(object sender, RoutedEventArgs e) =>
-        UrlHelper.Open(_profile.Author.ProfileUrl);
+        UrlUtil.Open(_profile.Author.ProfileUrl);
 
     private void StudioLink_Click(object sender, RoutedEventArgs e)
     {
         if (_profile.Studio is SubmissionAuthor studio)
-            UrlHelper.Open(studio.ProfileUrl);
+            UrlUtil.Open(studio.ProfileUrl);
     }
 
     private void ProfileLink_Click(object sender, RoutedEventArgs e) =>
-        UrlHelper.Open(_profile.ProfileUrl);
+        UrlUtil.Open(_profile.ProfileUrl);
 }

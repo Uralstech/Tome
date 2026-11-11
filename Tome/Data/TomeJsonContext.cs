@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -39,6 +40,12 @@ internal sealed class UInt128JsonConverter : JsonConverter<UInt128>
         return UInt128.Parse(value, CultureInfo.InvariantCulture.NumberFormat);
     }
 
+    public override UInt128 ReadAsPropertyName(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+        Read(ref reader, typeToConvert, options);
+    
     public override void Write(Utf8JsonWriter writer, UInt128 value, JsonSerializerOptions options) =>
         writer.WriteRawValue(value.ToString(CultureInfo.InvariantCulture.NumberFormat));
+
+    public override void WriteAsPropertyName(Utf8JsonWriter writer, [DisallowNull] UInt128 value, JsonSerializerOptions options) =>
+        writer.WritePropertyName(value.ToString(CultureInfo.InvariantCulture.NumberFormat));
 }

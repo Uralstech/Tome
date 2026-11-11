@@ -23,7 +23,6 @@ using GamebananaAPI.Data.Submission.Updates;
 using Microsoft.Extensions.Caching.Memory;
 using System.Text;
 using Tome.Data;
-using Tome.Data.Legacy;
 using Tome.Models;
 
 namespace Tome.Services;
@@ -130,86 +129,26 @@ public sealed class GamebananaService : IDisposable
 
     #region Search/Listings
 
-    private async Task<ListedMod> BuildListedModAsync(int id,
-        TomeManifest manifest, ModActions pendingActions,
-        string? submissionType = null, string? path = null,
-        bool isObsolete = false, bool isLocal = false,
-        string? name = null, string? author = null, int likes = 0)
+    public async Task<bool> CheckUpdateAsync(InstalledMod2 mod)
     {
-        return pendingActions.TryGetValue(id, out ModAction? pendingAction)
-            ? pendingAction.Mod
-            : new ListedMod(
-                Id: id,
-                SubmissionType: submissionType,
-                Path: path,
-                IsObsolete: isObsolete,
-                IsLocal: isLocal,
-                Name: name,
-                Author: author,
-                Likes: likes,
-                Install: manifest.Mods.ContainsKey(id),
-                HasUpdate: !isLocal && manifest.Mods.ContainsKey(id) && await CheckUpdateAsync(manifest, id, submissionType!)
-            );
-    }
-
-    private async Task<bool> CheckUpdateAsync(TomeManifest manifest, int id, string type)
-    {
-        InstalledMod installedMod = manifest.Mods[id];
+        if (mod.GamebananaSubmission is not GamebananaSubmission gbMetadata)
+            return false;
 
         // this doesn't use GetSubmissionUpdatesAsync because an "update" also includes new mod variants,
         // so if a file is added which is not for the mod variant currently installed, it would show as an update.
         // instead, this check if the submission's file with the same name has a new hash OR if it has been removed entirely.
 
-        SubmissionProfile submission = await GetSubmissionAsync(id, type);
-        return submission.Files!.FirstOrDefault(file => file.Name == installedMod.GamebananaMetadata!.FileName) is not SubmissionFile remoteFile
-            || !remoteFile.Md5Checksum.Equals(installedMod.GamebananaMetadata!.FileMd5Checksum, StringComparison.InvariantCulture);
+        SubmissionProfile submission = await GetSubmissionAsync(gbMetadata.Id, gbMetadata.Type);
+        Dictionary<string, InstalledModFile> installedFiles = new(
+            mod.Files.Select(static file => new KeyValuePair<string, InstalledModFile>(file.GamebananaFile!.Name, file)));
+
+        SubmissionFile[] files = [.. submission.Files!.Where(file => installedFiles.ContainsKey(file.Name))];
+
+        return files.Length != installedFiles.Count
+            || !files.All(file => file.Md5Checksum.Equals(installedFiles[file.Name].Md5Checksum, StringComparison.InvariantCulture));
     }
 
-    public async Task<IEnumerable<ListedMod>> GetInstalledAndPendingSubmissionsAsync(TomeManifest manifest, ModActions pendingActions)
-    {
-        Dictionary<int, ListedMod> dict = new(pendingActions
-            .Select(kvp => new KeyValuePair<int, ListedMod>(kvp.Key, kvp.Value.Mod)));
-
-        foreach ((int id, InstalledMod mod) in manifest.Mods)
-        {
-            if (dict.ContainsKey(id))
-                continue;
-
-            if (mod.GamebananaMetadata is GamebananaMetadata gamebanana)
-            {
-                SubmissionProfile submission = await GetSubmissionAsync(gamebanana.SubmissionId, gamebanana.SubmissionType);
-                dict.Add(id, await BuildListedModAsync(
-                    id: gamebanana.SubmissionId,
-                    submissionType: gamebanana.SubmissionType,
-                    isObsolete: submission.IsObsolete,
-
-                    name: submission.Name,
-                    author: submission.Author.Name,
-                    likes: submission.Likes,
-
-                    manifest: manifest, pendingActions: pendingActions
-                ));
-
-                continue;
-            }
-
-            dict.Add(id, await BuildListedModAsync(
-                id: id,
-                path: mod.RelativePath,
-                isLocal: true,
-
-                name: mod.ListingMetadata?.Name,
-                author: mod.ListingMetadata?.Author,
-
-                manifest: manifest, pendingActions: pendingActions
-            ));
-        }
-
-        return dict.Values;
-    }
-
-    public async Task<IEnumerable<ListedMod>> SearchAsync(string unformattedQuery,
-        Visibility defaultVisibility, TomeManifest manifest, ModActions pendingActions)
+    public async Task<IEnumerable<ListedMod>> SearchAsync(string unformattedQuery, Visibility defaultVisibility)
     {
         string[] parts = unformattedQuery.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         StringBuilder query = new();
@@ -249,20 +188,10 @@ public sealed class GamebananaService : IDisposable
                         throw new NotSupportedException("Unknown or unsupported submission type.");
 
                     SubmissionProfile submission = await GetSubmissionAsync(id, type);
-                    return [await BuildListedModAsync(
-                        id: submission.Id,
-                        submissionType: type,
-                        isObsolete: submission.IsObsolete,
-
-                        name: submission.Name,
-                        author: submission.Author.Name,
-                        likes: submission.Likes,
-
-                        manifest: manifest, pendingActions: pendingActions
-                    )];
+                    return [new OnlineListedMod(submission, type)];
 
                 case "$link":
-                    return await ParseLinkAsync(param, manifest, pendingActions);
+                    return await ParseLinkAsync(param);
 
                 case "$sort":
                     sort = param; break;
@@ -301,23 +230,18 @@ public sealed class GamebananaService : IDisposable
             _cache.Set(GetCacheKey(), submissions, s_searchCacheTime);
         }
 
-        return await Task.WhenAll(submissions!.Submissions
+        return submissions!.Submissions
             .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)visibility && sub.HasFiles)
-            .Select(sub => BuildListedModAsync(
-                id: sub.Id,
-                submissionType: sub.Type,
-                isObsolete: sub.IsObsolete,
-
-                name: sub.Name,
-                author: sub.Author.Name,
-                likes: sub.Likes,
-
-                manifest: manifest, pendingActions: pendingActions
-            )));
+            .Select(sub => new OnlineListedMod(
+                sub.Id,
+                sub.Type,
+                sub.Name,
+                sub.Author.Name,
+                sub.Likes,
+                sub.IsObsolete));
     }
 
-    public async Task<IEnumerable<ListedMod>> ParseLinkAsync(string link,
-        TomeManifest manifest, ModActions pendingActions)
+    public async Task<IEnumerable<ListedMod>> ParseLinkAsync(string link)
     {
         if (!Uri.TryCreate(link, UriKind.Absolute, out Uri? uri))
             throw new ArgumentException("Invalid submission link.");
@@ -341,21 +265,10 @@ public sealed class GamebananaService : IDisposable
             throw new ArgumentException("Invalid submission ID.");
 
         SubmissionProfile submission = await GetSubmissionAsync(id, type);
-        return [await BuildListedModAsync(
-            id: submission.Id,
-            submissionType: type,
-            isObsolete: submission.IsObsolete,
-
-            name: submission.Name,
-            author: submission.Author.Name,
-            likes: submission.Likes,
-
-            manifest: manifest, pendingActions: pendingActions
-        )];
+        return [new OnlineListedMod(submission, type)];
     }
 
-    public async Task<IEnumerable<ListedMod>> GetTopSubmissionsAsync(Visibility defaultVisibility,
-        TomeManifest manifest, ModActions pendingActions)
+    public async Task<IEnumerable<ListedMod>> GetTopSubmissionsAsync(Visibility defaultVisibility)
     {
         static int GetPriority(TopSubmissionPeriod group) => group switch
         {
@@ -377,23 +290,19 @@ public sealed class GamebananaService : IDisposable
             _cache.Set(GetCacheKey(), top, s_submissionCacheTime);
         }
 
-        return await Task.WhenAll(top!
+        return top!
             .OrderBy(static sub => GetPriority(sub.Period))
             .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)defaultVisibility)
-            .Select(sub => BuildListedModAsync(
-                id: sub.Id,
-                submissionType: sub.Type,
-
-                name: sub.Name,
-                author: sub.Author.Name,
-                likes: sub.Likes,
-
-                manifest: manifest, pendingActions: pendingActions
-            )));
+            .Select(sub => new OnlineListedMod(
+                sub.Id,
+                sub.Type,
+                sub.Name,
+                sub.Author.Name,
+                sub.Likes,
+                isObsolete: false));
     }
 
-    public async Task<IEnumerable<ListedMod>> GetFeaturedAsync(Visibility defaultVisibility,
-        TomeManifest manifest, ModActions pendingActions)
+    public async Task<IEnumerable<ListedMod>> GetFeaturedAsync(Visibility defaultVisibility)
     {
         static int GetPriority(FeaturingGroup group) => group switch
         {
@@ -411,24 +320,20 @@ public sealed class GamebananaService : IDisposable
             _cache.Set(GetCacheKey(), featured, s_submissionCacheTime);
         }
 
-        return await Task.WhenAll(featured!.Submissions
+        return featured!.Submissions
             .OrderBy(static sub =>
                 GetPriority(sub.Featurings
                 .OrderBy(static feat => GetPriority(feat.Group))
                 .ThenByDescending(static feat => feat.Date)
                 .FirstOrDefault()?.Group ?? (FeaturingGroup)int.MaxValue))
             .Where(sub => sub.Type is "Sound" or "Mod" && (int)sub.SafeForWork <= (int)defaultVisibility && sub.HasFiles)
-            .Select(sub => BuildListedModAsync(
-                id: sub.Id,
-                submissionType: sub.Type,
-                isObsolete: sub.IsObsolete,
-
-                name: sub.Name,
-                author: sub.Author.Name,
-                likes: sub.Likes,
-
-                manifest: manifest, pendingActions: pendingActions
-            )));
+            .Select(sub => new OnlineListedMod(
+                sub.Id,
+                sub.Type,
+                sub.Name,
+                sub.Author.Name,
+                sub.Likes,
+                sub.IsObsolete));
     }
 
     #endregion

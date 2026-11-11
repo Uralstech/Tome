@@ -19,7 +19,6 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 using Tome.Data;
-using Tome.Data.Legacy;
 using Tome.Models;
 using ValveKeyValue;
 
@@ -35,7 +34,7 @@ public sealed class DeadlockService(FileService fileService)
     private readonly FileService _fileService = fileService;
 
     public void LaunchDeadlock() =>
-        UrlHelper.Open($"steam://rungameid/{DeadlockAppId}");
+        UrlUtil.Open($"steam://rungameid/{DeadlockAppId}");
 
     public string GetAddonsPath(string basePath)
     {
@@ -54,51 +53,58 @@ public sealed class DeadlockService(FileService fileService)
 
         Uri baseUri = new(safeAddonsPath);
 
-        HashSet<string> allModPathsRelative = [];
-        HashSet<string> problematicModPathsRelative = [];
         StringBuilder messageBuilder = new();
+        HashSet<UInt128> problematicMods = [];
+        HashSet<string> unknownFiles = [];
+        HashSet<string> knownFiles = [];
 
-        foreach ((_, InstalledMod mod) in manifest.Mods)
+        foreach ((UInt128 id, InstalledMod2 mod) in manifest.Mods2)
         {
-            allModPathsRelative.Add(mod.RelativePath);
-
-            string absoluteModPath = Path.GetFullPath(Path.Combine(safeAddonsPath, mod.RelativePath));
-            if (!baseUri.IsBaseOf(new Uri(absoluteModPath)))
+            foreach (InstalledModFile file in mod.Files)
             {
-                problematicModPathsRelative.Add(mod.RelativePath);
-                messageBuilder.AppendLine($"- '{mod.ReadableName}' is outside {safeAddonsPath}");
-                continue;
-            }
+                knownFiles.Add(file.RelativePath);
 
-            if (!File.Exists(absoluteModPath))
-            {
-                problematicModPathsRelative.Add(mod.RelativePath);
-                messageBuilder.AppendLine($"- '{mod.ReadableName}' is missing at path: {absoluteModPath}");
-                continue;
-            }
+                string absolutePath = Path.GetFullPath(Path.Combine(safeAddonsPath, file.RelativePath));
+                if (!baseUri.IsBaseOf(new Uri(absolutePath)))
+                {
+                    problematicMods.Add(id);
+                    messageBuilder.AppendLine($"- A file from '{mod.Name}' is outside {safeAddonsPath}");
+                    continue;
+                }
 
-            if (!CryptographyUtil.Md5File(absoluteModPath).Equals(mod.OriginalFileMd5Checksum, StringComparison.InvariantCulture))
-            {
-                problematicModPathsRelative.Add(mod.RelativePath);
-                messageBuilder.AppendLine($"- '{mod.ReadableName}' does not match original checksum");
-                continue;
+                if (!File.Exists(absolutePath))
+                {
+                    problematicMods.Add(id);
+                    messageBuilder.AppendLine($"- A file from '{mod.Name}' is missing at path: {absolutePath}");
+                    continue;
+                }
+
+                if (!CryptographyUtil.Md5File(absolutePath)
+                        .Equals(file.Md5Checksum, StringComparison.InvariantCulture))
+                {
+                    problematicMods.Add(id);
+                    messageBuilder.AppendLine($"- A file from '{mod.Name}' does not match its original checksum");
+                    continue;
+                }
             }
         }
 
         foreach (string absolutePath in Directory.EnumerateFiles(safeAddonsPath))
         {
             string relativePath = Path.GetRelativePath(safeAddonsPath, absolutePath);
-            if (!allModPathsRelative.Contains(relativePath))
+            if (!knownFiles.Contains(relativePath))
             {
-                problematicModPathsRelative.Add(relativePath);
+                unknownFiles.Add(relativePath);
                 messageBuilder.AppendLine($"- Unknown/unregistered mod at path: {absolutePath}");
             }
         }
 
-        if (problematicModPathsRelative.Count > 0)
+        if (problematicMods.Count > 0
+            || unknownFiles.Count > 0)
         {
             failures = new ManifestVerificationFailures(
-                problematicModPathsRelative,
+                problematicMods,
+                unknownFiles,
                 messageBuilder.ToString()
             );
             return false;
@@ -117,12 +123,15 @@ public sealed class DeadlockService(FileService fileService)
         Uri baseUri = new(safeAddonsPath);
         HashSet<string> filesToDelete = [];
 
-        using (FileStream zipToOpen = new(backupZip, FileMode.Create))
+        using (FileStream zipToOpen = File.Create(backupZip))
         using (ZipArchive archive = new(zipToOpen, ZipArchiveMode.Create))
         {
-            foreach (string problematicModPathRelative in failures.RelativePaths)
+            foreach (string problematicFile in manifest.Mods2
+                .Where(kvp => failures.ProblematicMods.Contains(kvp.Key))
+                .SelectMany(static kvp => kvp.Value.Files.Select(static file => file.RelativePath))
+                .Concat(failures.UnknownFiles))
             {
-                string absoluteModPath = Path.GetFullPath(Path.Combine(safeAddonsPath, problematicModPathRelative));
+                string absoluteModPath = Path.GetFullPath(Path.Combine(safeAddonsPath, problematicFile));
                 if (!File.Exists(absoluteModPath))
                     continue;
 
@@ -134,11 +143,8 @@ public sealed class DeadlockService(FileService fileService)
                     filesToDelete.Add(absoluteModPath);
             }
 
-            foreach ((int key, InstalledMod mod) in new List<KeyValuePair<int, InstalledMod>>(manifest.Mods))
-            {
-                if (failures.RelativePaths.Contains(mod.RelativePath))
-                    manifest.Mods.Remove(key);
-            }
+            foreach (UInt128 id in failures.ProblematicMods)
+                manifest.Mods2.Remove(id);
         }
 
         foreach (string fileToDelete in filesToDelete)
@@ -271,8 +277,13 @@ public sealed class DeadlockService(FileService fileService)
             }
 
             document["FileSystem"]["SearchPaths"] = searchPathsCopy;
-            using (FileStream output = File.Create(file))
-                s_kv1Serializer.Serialize(output, document);
+
+            using (MemoryStream memoryStream = new())
+            {
+                s_kv1Serializer.Serialize(memoryStream, document);
+                byte[] data = memoryStream.ToArray();
+                File.WriteAllBytes(file, data);
+            }
 
             Debug.WriteLine("gameinfo.gi successfully patched.");
         }

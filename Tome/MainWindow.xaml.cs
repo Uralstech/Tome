@@ -63,8 +63,14 @@ public sealed partial class MainWindow : Window
 
     private void Window_ContentRendered(object sender, EventArgs e)
     {
-        if (!InitializeManifest())
+        if (!InitializeManifest(out TomeMeta? manifestMeta))
             return;
+
+        if (manifestMeta is { LastUpdatedBy: < VersionInfo.BuildId })
+        {
+            _manifest.Migrate(manifestMeta.LastUpdatedBy);
+            _files.SaveManifest(_manifest);
+        }
 
         PatchInstall();
         VerifyManifest();
@@ -90,9 +96,9 @@ public sealed partial class MainWindow : Window
 
     #region Core Initialization
 
-    private bool InitializeManifest()
+    private bool InitializeManifest(out TomeMeta? meta)
     {
-        if (_files.TryGetManifest(out TomeManifest? manifest)
+        if (_files.TryGetManifest(out TomeManifest? manifest, out meta)
             && _deadlock.VerifyDeadlockInstallation(manifest.GamePath))
         {
             _manifest = manifest;
@@ -246,7 +252,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (_manifest.Mods.Count > 0)
+        if (_manifest.Mods2.Count > 0)
         {
             MessageBoxResult result = MessageBox.Show(this, "The mods list managed by Tome will be cleared when switching to a different Deadlock installation.",
                                                             "Clear mods list?", MessageBoxButton.YesNo);
@@ -254,7 +260,7 @@ public sealed partial class MainWindow : Window
             if (result == MessageBoxResult.No)
                 return;
 
-            _manifest.Mods.Clear();
+            _manifest.Mods2.Clear();
         }
 
         _manifest.GamePath = deadlockPath;
@@ -281,7 +287,7 @@ public sealed partial class MainWindow : Window
     }
 
     private void GitHub_Click(object sender, RoutedEventArgs e) =>
-        UrlHelper.Open("https://github.com/Uralstech/Tome");
+        UrlUtil.Open("https://github.com/Uralstech/Tome");
 
     private void LaunchDeadlock_Click(object sender, RoutedEventArgs e) =>
         _deadlock.LaunchDeadlock();
@@ -309,7 +315,7 @@ public sealed partial class MainWindow : Window
     {
         SetCurrentCategory(null);
         RunModsUpdateSafe(() =>
-            _gamebanana.SearchAsync(query, _manifest.DefaultFilters, _manifest, _pendingActions));
+            _gamebanana.SearchAsync(query, _manifest.DefaultFilters));
     }
 
     #endregion
@@ -326,11 +332,11 @@ public sealed partial class MainWindow : Window
         SetCurrentCategory(selectedButton);
 
         if (ReferenceEquals(sender, FeaturedButton))
-            RunModsUpdateSafe(() => _gamebanana.GetFeaturedAsync(_manifest.DefaultFilters, _manifest, _pendingActions));
+            RunModsUpdateSafe(() => _gamebanana.GetFeaturedAsync(_manifest.DefaultFilters));
         else if (ReferenceEquals(sender, TopSubmissionsButton))
-            RunModsUpdateSafe(() => _gamebanana.GetTopSubmissionsAsync(_manifest.DefaultFilters, _manifest, _pendingActions));
+            RunModsUpdateSafe(() => _gamebanana.GetTopSubmissionsAsync(_manifest.DefaultFilters));
         else if (ReferenceEquals(sender, InstalledAndPendingButton))
-            RunModsUpdateSafe(() => _gamebanana.GetInstalledAndPendingSubmissionsAsync(_manifest, _pendingActions));
+            RunModsUpdateSafe(GetInstalledAndPendingSubmissionsAsync);
     }
 
     private void SetCurrentCategory(LockToggleButton? newChecked)
@@ -342,14 +348,74 @@ public sealed partial class MainWindow : Window
         _currentCategory = newChecked;
     }
 
+    private async Task<IEnumerable<ListedMod>> GetInstalledAndPendingSubmissionsAsync()
+    {
+        Dictionary<UInt128, ListedMod> pending = new(_pendingActions
+            .Select(kvp => new KeyValuePair<UInt128, ListedMod>(kvp.Key, kvp.Value.Mod)));
+
+        List<Task<ListedMod>> tasks = [];
+        foreach ((UInt128 id, InstalledMod2 installed) in _manifest.Mods2)
+        {
+            if (pending.TryGetValue(id, out ListedMod? listing))
+            {
+                tasks.Add(Task.FromResult(listing));
+                continue;
+            }
+
+            if (installed.GamebananaSubmission is not GamebananaSubmission gbMetadata)
+            {
+                tasks.Add(Task.FromResult<ListedMod>(new OfflineListedMod(id, installed, _manifest)));
+                continue;
+            }
+
+            tasks.Add(Task.Run(async () =>
+            {
+                SubmissionProfile submission = await _gamebanana.GetSubmissionAsync(gbMetadata.Id, gbMetadata.Type);
+                return (ListedMod)new OnlineListedMod(submission, gbMetadata.Type);
+            }));
+        }
+
+        return await Task.WhenAll(tasks);
+    }
+
     private async void RunModsUpdateSafe(Func<Task<IEnumerable<ListedMod>>> func)
     {
         await _getSemaphore.WaitAsync();
         try
         {
             _modsList.Clear();
-            foreach (ListedMod mod in await func())
-                _modsList.Add(mod);
+            IEnumerable<ListedMod> mods = await func();
+
+            List<Task<ListedMod>> tasks = [];
+            foreach (ListedMod listing in mods)
+            {
+                if (_pendingActions.TryGetValue(listing.Id, out ModAction? pending))
+                {
+                    tasks.Add(Task.FromResult(pending.Mod));
+                    continue;
+                }
+
+                if (!_manifest.Mods2.TryGetValue(listing.Id, out InstalledMod2? installedMod))
+                {
+                    tasks.Add(Task.FromResult(listing));
+                    continue;
+                }
+
+                if (installedMod.GamebananaSubmission is null)
+                {
+                    tasks.Add(Task.FromResult<ListedMod>(new OfflineListedMod(listing.Id, installedMod, _manifest)));
+                    continue;
+                }
+
+                tasks.Add(Task.Run(async () => listing with
+                {
+                    Install = true,
+                    HasUpdate = await _gamebanana.CheckUpdateAsync(installedMod),
+                }));
+            }
+
+            foreach (ListedMod listing in await Task.WhenAll(tasks))
+                _modsList.Add(listing);
         }
         catch (Exception ex)
         {
@@ -372,7 +438,7 @@ public sealed partial class MainWindow : Window
             || button.Tag is not ListedMod mod)
             return;
 
-        if (mod.IsLocal || string.IsNullOrEmpty(mod.SubmissionType))
+        if (mod.IsLocal || mod is not OnlineListedMod onlineMod)
         {
             MessageBox.Show(this, "Tome cannot fetch information about locally installed mods.",
                                   "Cannot fetch details for local mod", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -380,7 +446,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        ShowModInfoSafeAsync(mod.Id, mod.SubmissionType);
+        ShowModInfoSafeAsync(onlineMod.SubmissionId, onlineMod.SubmissionType);
     }
 
     private void Apply_Click(object sender, RoutedEventArgs e)
@@ -415,27 +481,23 @@ public sealed partial class MainWindow : Window
         if (localMod.ShowDialog() != true)
             return;
 
-        int id = localMod.Replacing?.Id ?? BitConverter.ToInt32(Guid.NewGuid().ToByteArray());
         bool isUpdate = localMod.Replacing is not null;
+        UInt128 id = localMod.Replacing ?? CryptographyUtil.GetUniqueId();
 
         ModActionType actionType = isUpdate
             ? ModActionType.Update : ModActionType.Install;
 
         _pendingActions[id] = new ModAction(
             actionType,
-            new ListedMod(
-                Id: id,
-                SubmissionType: null,
-                Path: localMod.ModPath.Text,
-                IsObsolete: false,
-                IsLocal: true,
+            new OfflineListedMod(
+                id,
+                localMod.ModPath.Text,
                 localMod.ModName.Text,
-                string.IsNullOrEmpty(localMod.ModAuthor.Text) ? null : localMod.ModAuthor.Text,
-                Likes: 0,
-                Install: true,
-                HasUpdate: isUpdate)
+                string.IsNullOrEmpty(localMod.ModAuthor.Text) ? null : localMod.ModAuthor.Text)
             {
-                Update = isUpdate
+                Install = true,
+                HasUpdate = isUpdate,
+                Update = isUpdate,
             });
 
         InstalledAndPendingButton.IsChecked = true;
@@ -452,7 +514,7 @@ public sealed partial class MainWindow : Window
         ModActionType requestedActionType = mod.Install
             ? ModActionType.Install : ModActionType.Delete;
 
-        ModAction action = mod.ToAction(requestedActionType);
+        ModAction action = new (requestedActionType, mod);
         if (_pendingActions.TryAdd(mod.Id, action))
             return;
 
@@ -483,7 +545,7 @@ public sealed partial class MainWindow : Window
         mod.Update = checkbox.IsChecked ?? false;
 
         if (mod.Update)
-            _pendingActions[mod.Id] = mod.ToAction(ModActionType.Update);
+            _pendingActions[mod.Id] = new ModAction(ModActionType.Update, mod);
         else if (_pendingActions.TryGetValue(mod.Id, out ModAction? pendingAction)
             && pendingAction.Type == ModActionType.Update)
             _pendingActions.Remove(mod.Id);

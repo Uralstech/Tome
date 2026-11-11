@@ -13,8 +13,8 @@
 
   <PropertyGroup>
 	<ApplicationIcon>Icon.ico</ApplicationIcon>
-	<Version>1.0.0-preview.1</Version>
-	<AppBuildId>0</AppBuildId>
+	<Version>1.0.0-preview.2</Version>
+	<AppBuildId>1</AppBuildId>
 	  
 	<Product>Tome</Product>
 	<Copyright>Copyright 2026 URAV ADVANCED LEARNING SYSTEMS PRIVATE LIMITED</Copyright>

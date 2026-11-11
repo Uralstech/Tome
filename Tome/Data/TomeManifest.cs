@@ -41,6 +41,52 @@ public sealed class TomeManifest
     /// <summary>Installed mods which are prone to conflicts, like skins and some model/texture replacements (key: category ID, value: mod IDs).</summary>
     [JsonPropertyName("installedConflictableModsV2")]
     public Dictionary<int, List<UInt128>> InstalledConflictableMods2 { get; set; } = [];
+
+    internal void Migrate(int lastUpdatedBy)
+    {
+        if (lastUpdatedBy != 0)
+            return;
+
+#pragma warning disable CS0612 // Type or member is obsolete
+
+        InstalledConflictableMods2 = new(InstalledConflictableMods
+            .Select(static kvp => new KeyValuePair<int, List<UInt128>>(kvp.Key, kvp.Value.ConvertAll(i => (UInt128)i))));
+
+        Mods2 = new(Mods.Select(static kvp =>
+        {
+            Legacy.InstalledMod old = kvp.Value;
+            Legacy.GamebananaMetadata? submission = old.GamebananaMetadata;
+
+            return new KeyValuePair<UInt128, InstalledMod2>((UInt128)kvp.Key, new InstalledMod2
+            {
+                Name = old.ListingMetadata?.Name ?? "[no name provided]",
+                Author = old.ListingMetadata?.Author,
+                GamebananaSubmission = submission is not null
+                    ? new GamebananaSubmission
+                    {
+                        Id = submission.SubmissionId,
+                        Type = submission.SubmissionType,
+                        CategoryType = submission.SubmissionCategoryType,
+                        CategoryBranch = submission.SubmissionCategoryTree,
+                    } : null,
+                Files = [new InstalledModFile
+                {
+                    RelativePath = old.RelativePath,
+                    Md5Checksum = old.OriginalFileMd5Checksum,
+                    GamebananaFile = submission is not null
+                        ? new GamebananaFile
+                        {
+                            Id = submission.FileId,
+                            Name = submission.FileName,
+                            UploadDate = submission.FileUploadDate,
+                            ArchiveMd5Checksum = submission.FileMd5Checksum
+                        } : null,
+                }]
+            });
+        }));
+
+#pragma warning restore CS0612 // Type or member is obsolete
+    }
 }
 
 /// <summary>Entry for an installed mod.</summary>
