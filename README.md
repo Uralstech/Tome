@@ -10,11 +10,11 @@ Tome is published in two variants, both for x64 Windows. You can also use Tome o
 
 Both versions have the same functionality, but differ in dependency management and install size. You can download them from here, or the [Gamebanana](https://gamebanana.com/tools/24805) page:
 
-<a href="https://github.com/Uralstech/Tome/releases/download/latestTome-Setup-Full-x64.exe"><img src="https://img.shields.io/badge/Full-Tome%3A_Windows_x64-black?style=for-the-badge&color=00ADEF"></a>
+<a href="https://github.com/Uralstech/Tome/releases/latest/download/Tome-Setup-Full-x64.exe"><img src="https://img.shields.io/badge/Full-Tome%3A_Windows_x64-black?style=for-the-badge&color=00ADEF"></a>
 
 The "Full" installer includes the .NET 10 Desktop runtime, totalling Tome's installed size to ~160mb. Recommended if you do not plan on updating Tome frequently.
 
-<a href="https://github.com/Uralstech/Tome/releases/download/latest/Tome-Setup-Slim-x64.exe"><img src="https://img.shields.io/badge/Slim-Tome%3A_Windows_x64-black?style=for-the-badge&color=00ADEF"></a>
+<a href="https://github.com/Uralstech/Tome/releases/latest/download/Tome-Setup-Slim-x64.exe"><img src="https://img.shields.io/badge/Slim-Tome%3A_Windows_x64-black?style=for-the-badge&color=00ADEF"></a>
 
 The "Slim" installer uses a shared .NET 10 Desktop runtime that is installed on your system separate from Tome, making its installed size ~20mb.
 Recommended if you already have the runtime installed and updated, or if you want to keep up to date on Tome's updates (download sizes will be reduced).
