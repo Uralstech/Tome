@@ -470,7 +470,7 @@ public partial class Downloads : Window
                             DownloadProgressBar.Value = 1;
 
                             foreach (ModFile file in deletes)
-                                File.Delete(file.Source.LocalPath);
+                                File.Delete(file.TargetPath!);
                         }
 
                         break;
@@ -538,17 +538,22 @@ public partial class Downloads : Window
                 InstalledModFile existingFile = _manifest.Mods2[action.Mod.Id].Files.First(installedFile =>
                     installedFile.RelativePath == Path.GetRelativePath(addonsFolder, file.TargetPath));
 
-                if (!existingMd5.Equals(existingFile.Md5Checksum, StringComparison.InvariantCulture)
-                    && MessageBox.Show(this, $"'{action.Mod.Name}' does not match its known checksum for '{file.Name}'. " +
-                                             $"You may have edited the mod outside of Tome. Skip?", "Checksum mismatch",
-                                             MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK)
-                    return null;
-                continue;
+                if (!existingMd5.Equals(existingFile.Md5Checksum, StringComparison.InvariantCulture))
+                {
+                    MessageBoxResult result = MessageBox.Show(this, $"'{action.Mod.Name}' does not match its known checksum for '{file.Name}'. " +
+                                                                    $"You may have edited the mod outside of Tome. Skip?", "Checksum mismatch",
+                                                                    MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+
+                    if (result == MessageBoxResult.Yes)
+                        continue;
+                    if (result == MessageBoxResult.Cancel)
+                        return null;
+                }
             }
 
             if (!file.Md5Hash.Equals(CryptographyUtil.Md5File(path), StringComparison.InvariantCulture))
             {
-                if (MessageBox.Show(this, $"'{file.Name}' does not match its known checksum for '{file.Name}' and is corrupt. Skip?",
+                if (MessageBox.Show(this, $"'{action.Mod.Name}' does not match its known checksum for '{file.Name}' and is corrupt. Skip?",
                                           "Checksum mismatch", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK)
                     return null;
                 continue;
@@ -673,7 +678,7 @@ public partial class Downloads : Window
             return (true, new InstalledModFile
             {
                 RelativePath = Path.GetRelativePath(addonsFolder, targetPath),
-                Md5Checksum = modFile.Md5Hash,
+                Md5Checksum = CryptographyUtil.Md5File(targetPath),
                 GamebananaFile = modFile.GamebananaFile is not null
                     ? new GamebananaFile
                     {
