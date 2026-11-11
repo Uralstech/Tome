@@ -557,8 +557,10 @@ public partial class Downloads : Window
                 if (!existingMd5.Equals(existingFile.Md5Checksum, StringComparison.InvariantCulture))
                 {
                     MessageBoxResult result = MessageBox.Show(this, $"'{action.Mod.Name}' does not match its known checksum for '{file.Name}'. " +
-                                                                    $"You may have edited the mod outside of Tome. Skip?", "Checksum mismatch",
-                                                                    MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+                                                                    $"You may have edited the mod outside of Tome. Skip?\n\n" +
+                                                                    $"Skipping will de-list the mod from Tome and give you a chance to" +
+                                                                    $"back it up while Tome is closed or when it cleans up the installs next launch.",
+                                                                    "Checksum mismatch", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
 
                     if (result == MessageBoxResult.Yes)
                         continue;
