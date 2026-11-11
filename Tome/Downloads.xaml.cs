@@ -113,6 +113,7 @@ public partial class Downloads : Window
 
             foreach ((UInt128 id, ModAction action) in _requestedActions)
             {
+                _manifest.Mods2.TryGetValue(id, out InstalledMod2? installedMod);
                 List<ModFile> files = [];
                 
                 FileInfo fileInfo;
@@ -132,9 +133,24 @@ public partial class Downloads : Window
                                 Md5Hash: CryptographyUtil.Md5File(fileInfo.FullName),
                                 Size: fileInfo.Length,
 
-                                TargetPath: fileInfo.FullName,
+                                TargetPath: installedMod?.Files is { Count: > 0 }
+                                    ? Path.Combine(addonsFolder, installedMod.Files[0].RelativePath) : null,
                                 GamebananaFile: null
                             ));
+
+                            if (installedMod?.Files is { Count: > 1 })
+                            {
+                                files.AddRange(installedMod.Files[1..].Select(missedFile => new ModFile(
+                                    Source: s_invalidUri,
+                                    Name: missedFile.RelativePath,
+                                    Md5Hash: missedFile.Md5Checksum,
+                                    Size: 0,
+
+                                    TargetPath: Path.Combine(addonsFolder, missedFile.RelativePath),
+                                    GamebananaFile: null
+                                )));
+                            }
+
                             break;
                         }
 
@@ -185,7 +201,7 @@ public partial class Downloads : Window
                             break;
                         }
 
-                        Dictionary<string, InstalledModFile> installedFiles = new(_manifest.Mods2[id].Files
+                        Dictionary<string, InstalledModFile> installedFiles = new(installedMod!.Files
                             .Select(static installedFile => new KeyValuePair<string, InstalledModFile>(installedFile.GamebananaFile!.Name, installedFile)));
 
                         Dictionary<string, SubmissionFile> availableFiles = new(submission.Files
@@ -243,7 +259,7 @@ public partial class Downloads : Window
                         break;
 
                     case ModActionType.Delete:
-                        foreach (InstalledModFile installedFile in _manifest.Mods2[id].Files)
+                        foreach (InstalledModFile installedFile in installedMod!.Files)
                         {
                             string fullPath = Path.Combine(addonsFolder, installedFile.RelativePath);
                             fileInfo = new FileInfo(fullPath);
