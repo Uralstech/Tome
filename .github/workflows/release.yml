@@ -63,7 +63,7 @@ jobs:
           /DAppBinariesPath=${{ github.workspace }}\publish-slim
           /DAppIconPath=${{ github.workspace }}\Tome\Icon.ico
           /DInstallerOutputFolder=${{ github.workspace }}\installer-slim
-          /DInstallerBaseFileName=Tome-Setup-Slim-${{ steps.metadata_init.outputs.version }}-x64
+          /DInstallerBaseFileName=Tome-Setup-Slim-x64
           /DBinaryType=slim
           
     - name: Full Build
@@ -90,7 +90,7 @@ jobs:
           /DAppBinariesPath=${{ github.workspace }}\publish-full
           /DAppIconPath=${{ github.workspace }}\Tome\Icon.ico
           /DInstallerOutputFolder=${{ github.workspace }}\installer-full
-          /DInstallerBaseFileName=Tome-Setup-Full-${{ steps.metadata_init.outputs.version }}-x64
+          /DInstallerBaseFileName=Tome-Setup-Full-x64
           /DBinaryType=full
       
     - name: Create Release

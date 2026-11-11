@@ -24,7 +24,7 @@ Both installers will download WebView2 if not detected otherwise.
 
 ## TODO
 
-- Support mods that serve multiple archives which can both be installed (ref. [rabbit graves](https://gamebanana.com/mods/734072))
+- ~~Support mods that serve multiple archives which can both be installed (ref. [rabbit graves](https://gamebanana.com/mods/734072))~~ (added in v1.0.0-preview.2!)
 - Maybe support performance config mods which override gameinfo.gi
 
 ## Find Mods
@@ -72,6 +72,10 @@ You can build Tome with:
 ```cmd
 dotnet build Tome\Tome.csproj
 ```
+
+Note that the built version of Tome will not work with Gamebanana's one-click install,
+as that is handled by the installer. You will have to manually edit Windows Registry keys
+to link your built version of Tome with the `tome:` URL protocol.
 
 ## Credits
 
