@@ -139,13 +139,13 @@ public sealed class GamebananaService : IDisposable
         // instead, this check if the submission's file with the same name has a new hash OR if it has been removed entirely.
 
         SubmissionProfile submission = await GetSubmissionAsync(gbMetadata.Id, gbMetadata.Type);
-        Dictionary<string, InstalledModFile> installedFiles = new(
-            mod.Files.Select(static file => new KeyValuePair<string, InstalledModFile>(file.GamebananaFile!.Name, file)));
+        Dictionary<string, GamebananaFile> installedFiles = new(
+            mod.Files.Select(static file => new KeyValuePair<string, GamebananaFile>(file.GamebananaFile!.Name, file.GamebananaFile!)));
 
         SubmissionFile[] files = [.. submission.Files!.Where(file => installedFiles.ContainsKey(file.Name))];
 
         return files.Length != installedFiles.Count
-            || !files.All(file => file.Md5Checksum.Equals(installedFiles[file.Name].Md5Checksum, StringComparison.InvariantCulture));
+            || !files.All(file => file.Md5Checksum.Equals(installedFiles[file.Name].ArchiveMd5Checksum, StringComparison.InvariantCulture));
     }
 
     public async Task<IEnumerable<ListedMod>> SearchAsync(string unformattedQuery, Visibility defaultVisibility)
